@@ -236,9 +236,9 @@ fi`.trim();
    */
   private createMacOSCommand(title?: string): string {
     // Generate the bash script with proper title handling
-    const titleLogic = title 
-      ? `NOTIFICATION_TITLE="${title.replace(/"/g, '\\"')}"` 
-      : 'NOTIFICATION_TITLE="${USER_MSG:0:256}"';
+    const mainTitleLogic = title 
+      ? `MAIN_TITLE="${title.replace(/"/g, '\\"')}"` 
+      : 'MAIN_TITLE="Claude Code"';
 
     const command = `#!/bin/bash
 # Process transcript and send macOS notification
@@ -269,18 +269,22 @@ rm -f "$TEMP_FILE"
 
 # Send notification only if assistant message is not empty
 if [ -n "$LATEST_MSG" ]; then
-  # Set notification title (custom title if provided, otherwise use user message truncated to 256 chars for macOS limit)
-  ${titleLogic}
+  # Set main notification title (custom title if provided, otherwise default "Claude Code")
+  ${mainTitleLogic}
+  
+  # Use user message as subtitle (truncated to 256 chars for macOS limit)
+  SUBTITLE="\${USER_MSG:0:256}"
   
   # Use assistant message as body (truncated to 1000 chars for macOS limit)
   NOTIFICATION_BODY="\${LATEST_MSG:0:1000}"
   
   # Escape quotes for AppleScript
-  ESCAPED_TITLE=$(echo "$NOTIFICATION_TITLE" | sed 's/"/\\\\"/g')
+  ESCAPED_MAIN_TITLE=$(echo "$MAIN_TITLE" | sed 's/"/\\\\"/g')
+  ESCAPED_SUBTITLE=$(echo "$SUBTITLE" | sed 's/"/\\\\"/g')
   ESCAPED_BODY=$(echo "$NOTIFICATION_BODY" | sed 's/"/\\\\"/g')
   
   # Play sound and display macOS notification
-  afplay /System/Library/Sounds/Pop.aiff & osascript -e "display notification \\"$ESCAPED_BODY\\" with title \\"Claude Code\\" subtitle \\"$ESCAPED_TITLE\\"" &
+  afplay /System/Library/Sounds/Pop.aiff & osascript -e "display notification \\"$ESCAPED_BODY\\" with title \\"$ESCAPED_MAIN_TITLE\\" subtitle \\"$ESCAPED_SUBTITLE\\"" &
 fi`.trim();
 
     return command;
