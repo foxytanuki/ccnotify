@@ -1,7 +1,8 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { CCNotifyError, type ClaudeConfig, ErrorType } from '../types/index.js';
+import { CCNotifyError, type ClaudeConfig, ErrorType, ErrorSeverity } from '../types/index.js';
 import { fileSystemService, fileUtils } from '../utils/file.js';
+import { errorHandler } from './error-handler.js';
 
 /**
  * Configuration manager interface
@@ -23,9 +24,11 @@ export class ConfigManagerImpl implements ConfigManager {
    */
   async loadConfig(path: string): Promise<ClaudeConfig> {
     try {
+      await errorHandler.logDebug('Loading configuration file', { path });
+      
       // Check if file exists
       if (!(await fileSystemService.fileExists(path))) {
-        // Return empty config if file doesn't exist
+        await errorHandler.logDebug('Configuration file does not exist, returning empty config');
         return {};
       }
 
@@ -35,15 +38,24 @@ export class ConfigManagerImpl implements ConfigManager {
       // Validate the configuration structure
       this.validateConfig(config);
 
+      await errorHandler.logDebug('Configuration loaded successfully');
       return config;
     } catch (error) {
       if (error instanceof CCNotifyError) {
         throw error;
       }
-      throw new CCNotifyError(
+      
+      // Use enhanced error wrapping for JSON errors
+      if (error instanceof SyntaxError) {
+        throw errorHandler.wrapJsonError(error, path);
+      }
+      
+      throw errorHandler.createError(
         ErrorType.JSON_PARSE_ERROR,
         `Failed to load configuration from ${path}`,
         error as Error,
+        ErrorSeverity.MEDIUM,
+        { path, operation: 'loadConfig' },
       );
     }
   }
@@ -53,20 +65,21 @@ export class ConfigManagerImpl implements ConfigManager {
    */
   async saveConfig(path: string, config: ClaudeConfig): Promise<void> {
     try {
+      await errorHandler.logDebug('Saving configuration file', { path });
+      
       // Validate the configuration before saving
       this.validateConfig(config);
 
       // Use safe write operation with backup
       await fileUtils.safeWriteJsonFile(path, config);
+      
+      await errorHandler.logDebug('Configuration saved successfully');
     } catch (error) {
       if (error instanceof CCNotifyError) {
         throw error;
       }
-      throw new CCNotifyError(
-        ErrorType.FILE_PERMISSION_ERROR,
-        `Failed to save configuration to ${path}`,
-        error as Error,
-      );
+      
+      throw errorHandler.wrapFileSystemError(error, 'save configuration', path);
     }
   }
 
@@ -75,15 +88,23 @@ export class ConfigManagerImpl implements ConfigManager {
    */
   async backupConfig(path: string): Promise<string> {
     try {
-      return await fileSystemService.createBackup(path);
+      await errorHandler.logDebug('Creating configuration backup', { path });
+      
+      const backupPath = await fileSystemService.createBackup(path);
+      
+      await errorHandler.logDebug('Configuration backup created successfully', { backupPath });
+      return backupPath;
     } catch (error) {
       if (error instanceof CCNotifyError) {
         throw error;
       }
-      throw new CCNotifyError(
+      
+      throw errorHandler.createError(
         ErrorType.CONFIG_BACKUP_ERROR,
         `Failed to backup configuration at ${path}`,
         error as Error,
+        ErrorSeverity.HIGH,
+        { path, operation: 'backupConfig' },
       );
     }
   }

@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerDiscordCommand, registerNtfyCommand } from './commands/index.js';
+import { errorHandler } from './services/error-handler.js';
+import { ErrorType, ErrorSeverity } from './types/index.js';
 
 // Get package.json for version info
 const __filename = fileURLToPath(import.meta.url);
@@ -60,15 +62,47 @@ function registerCommands(program: Command): void {
  */
 function setupErrorHandling(): void {
   // Handle uncaught exceptions
-  process.on('uncaughtException', (error) => {
-    console.error('❌ Unexpected error:', error.message);
+  process.on('uncaughtException', async (error) => {
+    await errorHandler.logError(
+      errorHandler.createError(
+        ErrorType.COMMAND_ERROR,
+        'Uncaught exception occurred',
+        error,
+        ErrorSeverity.CRITICAL,
+      ),
+      { type: 'uncaughtException' },
+    );
+    await errorHandler.flushLogs();
     process.exit(1);
   });
 
   // Handle unhandled promise rejections
-  process.on('unhandledRejection', (reason) => {
-    console.error('❌ Unhandled promise rejection:', reason);
+  process.on('unhandledRejection', async (reason) => {
+    const error = reason instanceof Error ? reason : new Error(String(reason));
+    await errorHandler.logError(
+      errorHandler.createError(
+        ErrorType.COMMAND_ERROR,
+        'Unhandled promise rejection',
+        error,
+        ErrorSeverity.CRITICAL,
+      ),
+      { type: 'unhandledRejection', reason },
+    );
+    await errorHandler.flushLogs();
     process.exit(1);
+  });
+
+  // Handle process termination signals
+  process.on('SIGINT', async () => {
+    await errorHandler.logInfo('Process interrupted by user (SIGINT)');
+    await errorHandler.flushLogs();
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', async () => {
+    await errorHandler.logInfo('Process terminated (SIGTERM)');
+    await errorHandler.flushLogs();
+    process.exit(0);
   });
 }
 

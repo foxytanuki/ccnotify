@@ -1,7 +1,8 @@
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { CCNotifyError, ErrorType } from '../types/index.js';
+import { CCNotifyError, ErrorType, ErrorSeverity } from '../types/index.js';
 import { fileSystemService } from './file.js';
+import { errorHandler } from '../services/error-handler.js';
 
 /**
  * Path resolution service interface
@@ -55,9 +56,12 @@ export class PathResolverImpl implements PathResolver {
     try {
       const home = homedir();
       if (!home) {
-        throw new CCNotifyError(
-          ErrorType.FILE_PERMISSION_ERROR,
+        throw errorHandler.createError(
+          ErrorType.DIRECTORY_ACCESS_ERROR,
           'Unable to determine home directory',
+          undefined,
+          ErrorSeverity.HIGH,
+          { operation: 'getHomeDirectory' },
         );
       }
       return home;
@@ -65,10 +69,12 @@ export class PathResolverImpl implements PathResolver {
       if (error instanceof CCNotifyError) {
         throw error;
       }
-      throw new CCNotifyError(
-        ErrorType.FILE_PERMISSION_ERROR,
+      throw errorHandler.createError(
+        ErrorType.DIRECTORY_ACCESS_ERROR,
         'Failed to get home directory',
         error as Error,
+        ErrorSeverity.HIGH,
+        { operation: 'getHomeDirectory' },
       );
     }
   }
@@ -118,9 +124,12 @@ export class PathResolverImpl implements PathResolver {
       // Validate the directory path
       const isValid = await this.validateDirectoryPath(configDir);
       if (!isValid) {
-        throw new CCNotifyError(
-          ErrorType.FILE_PERMISSION_ERROR,
+        throw errorHandler.createError(
+          ErrorType.DIRECTORY_ACCESS_ERROR,
           `Cannot access or create configuration directory: ${configDir}`,
+          undefined,
+          ErrorSeverity.HIGH,
+          { configDir, isGlobal, operation: 'ensureConfigDirectory' },
         );
       }
 
@@ -132,10 +141,12 @@ export class PathResolverImpl implements PathResolver {
       if (error instanceof CCNotifyError) {
         throw error;
       }
-      throw new CCNotifyError(
-        ErrorType.FILE_PERMISSION_ERROR,
+      throw errorHandler.createError(
+        ErrorType.DIRECTORY_ACCESS_ERROR,
         `Failed to ensure configuration directory: ${configDir}`,
         error as Error,
+        ErrorSeverity.HIGH,
+        { configDir, isGlobal, operation: 'ensureConfigDirectory' },
       );
     }
   }

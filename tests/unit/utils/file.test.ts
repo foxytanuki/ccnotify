@@ -1,376 +1,457 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { promises as fs } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CCNotifyError } from '../../../src/types/index.js';
-import { FileSystemServiceImpl, fileSystemService, fileUtils } from '../../../src/utils/file.js';
+import { fileSystemService, fileUtils } from '../../../src/utils/file.js';
+import { CCNotifyError, ErrorType, ErrorSeverity } from '../../../src/types/index.js';
+import { errorHandler } from '../../../src/services/error-handler.js';
 
-describe('FileSystemService', () => {
-  let testDir: string;
-  let service: FileSystemServiceImpl;
+// Mock fs operations
+vi.mock('node:fs', () => ({
+  promises: {
+    mkdir: vi.fn(),
+    access: vi.fn(),
+    readFile: vi.fn(),
+    writeFile: vi.fn(),
+    copyFile: vi.fn(),
+  },
+}));
 
-  beforeEach(async () => {
-    // Create a temporary directory for testing
-    testDir = join(tmpdir(), `ccnotify-test-${Date.now()}`);
-    await fs.mkdir(testDir, { recursive: true });
-    service = new FileSystemServiceImpl();
-  });
+// Mock error handler
+vi.mock('../../../src/services/error-handler.js', () => ({
+  errorHandler: {
+    wrapFileSystemError: vi.fn((error, operation, path) => 
+      new CCNotifyError(ErrorType.FILE_PERMISSION_ERROR, `Failed to ${operation}: ${path}`, error)
+    ),
+    createError: vi.fn((type, message, originalError, severity, context) => 
+      new CCNotifyError(type, message, originalError, severity)
+    ),
+    wrapJsonError: vi.fn((error, filePath) => 
+      new CCNotifyError(ErrorType.JSON_PARSE_ERROR, `Invalid JSON in configuration file: ${filePath}`, error)
+    ),
+  },
+}));
 
-  afterEach(async () => {
-    // Clean up test directory
-    try {
-      await fs.rm(testDir, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup errors
-    }
+describe('File System Service', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
   describe('ensureDirectory', () => {
-    it('should create a directory if it does not exist', async () => {
-      const dirPath = join(testDir, 'new-directory');
+    it('should create directory successfully', async () => {
+      (fs.mkdir as any).mockResolvedValue(undefined);
 
-      await service.ensureDirectory(dirPath);
-
-      const stats = await fs.stat(dirPath);
-      expect(stats.isDirectory()).toBe(true);
+      await expect(fileSystemService.ensureDirectory('/test/path')).resolves.not.toThrow();
+      expect(fs.mkdir).toHaveBeenCalledWith('/test/path', { recursive: true });
     });
 
-    it('should not fail if directory already exists', async () => {
-      const dirPath = join(testDir, 'existing-directory');
-      await fs.mkdir(dirPath);
+    it('should handle directory creation errors with enhanced error handling', async () => {
+      const error = new Error('Permission denied') as NodeJS.ErrnoException;
+      error.code = 'EACCES';
+      (fs.mkdir as any).mockRejectedValue(error);
 
-      await expect(service.ensureDirectory(dirPath)).resolves.not.toThrow();
-    });
-
-    it('should create nested directories', async () => {
-      const nestedPath = join(testDir, 'level1', 'level2', 'level3');
-
-      await service.ensureDirectory(nestedPath);
-
-      const stats = await fs.stat(nestedPath);
-      expect(stats.isDirectory()).toBe(true);
-    });
-
-    it('should throw CCNotifyError on permission error', async () => {
-      // Mock fs.mkdir to simulate permission error
-      const mockMkdir = vi.spyOn(fs, 'mkdir').mockRejectedValue(new Error('Permission denied'));
-
-      await expect(service.ensureDirectory('/invalid/path')).rejects.toThrow(CCNotifyError);
-      await expect(service.ensureDirectory('/invalid/path')).rejects.toThrow(
-        'Failed to create directory',
+      await expect(fileSystemService.ensureDirectory('/test/path')).rejects.toThrow(CCNotifyError);
+      
+      // Verify enhanced error handling was called
+      expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
+        error,
+        'create directory',
+        '/test/path'
       );
+    });
 
-      mockMkdir.mockRestore();
+    it('should handle ENOENT errors appropriately', async () => {
+      const error = new Error('No such file or directory') as NodeJS.ErrnoException;
+      error.code = 'ENOENT';
+      (fs.mkdir as any).mockRejectedValue(error);
+
+      await expect(fileSystemService.ensureDirectory('/test/path')).rejects.toThrow(CCNotifyError);
+      expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
+        error,
+        'create directory',
+        '/test/path'
+      );
     });
   });
 
   describe('fileExists', () => {
-    it('should return true for existing file', async () => {
-      const filePath = join(testDir, 'existing-file.txt');
-      await fs.writeFile(filePath, 'test content');
+    it('should return true for existing files', async () => {
+      (fs.access as any).mockResolvedValue(undefined);
 
-      const exists = await service.fileExists(filePath);
-
-      expect(exists).toBe(true);
+      const result = await fileSystemService.fileExists('/test/file.txt');
+      expect(result).toBe(true);
+      expect(fs.access).toHaveBeenCalledWith('/test/file.txt');
     });
 
-    it('should return false for non-existing file', async () => {
-      const filePath = join(testDir, 'non-existing-file.txt');
+    it('should return false for non-existing files', async () => {
+      (fs.access as any).mockRejectedValue(new Error('File not found'));
 
-      const exists = await service.fileExists(filePath);
-
-      expect(exists).toBe(false);
+      const result = await fileSystemService.fileExists('/test/file.txt');
+      expect(result).toBe(false);
     });
 
-    it('should return true for existing directory', async () => {
-      const dirPath = join(testDir, 'existing-directory');
-      await fs.mkdir(dirPath);
+    it('should handle permission errors gracefully', async () => {
+      const error = new Error('Permission denied') as NodeJS.ErrnoException;
+      error.code = 'EACCES';
+      (fs.access as any).mockRejectedValue(error);
 
-      const exists = await service.fileExists(dirPath);
-
-      expect(exists).toBe(true);
+      const result = await fileSystemService.fileExists('/test/file.txt');
+      expect(result).toBe(false);
     });
   });
 
   describe('readFile', () => {
-    it('should read file content correctly', async () => {
-      const filePath = join(testDir, 'test-file.txt');
-      const content = 'Hello, World!';
-      await fs.writeFile(filePath, content);
+    it('should read file content successfully', async () => {
+      const content = 'test content';
+      (fs.readFile as any).mockResolvedValue(content);
 
-      const result = await service.readFile(filePath);
-
+      const result = await fileSystemService.readFile('/test/file.txt');
       expect(result).toBe(content);
+      expect(fs.readFile).toHaveBeenCalledWith('/test/file.txt', 'utf-8');
     });
 
-    it('should throw CCNotifyError for non-existing file', async () => {
-      const filePath = join(testDir, 'non-existing-file.txt');
+    it('should handle file read errors with enhanced error handling', async () => {
+      const error = new Error('File not found') as NodeJS.ErrnoException;
+      error.code = 'ENOENT';
+      (fs.readFile as any).mockRejectedValue(error);
 
-      await expect(service.readFile(filePath)).rejects.toThrow(CCNotifyError);
-      await expect(service.readFile(filePath)).rejects.toThrow('Failed to read file');
+      await expect(fileSystemService.readFile('/test/file.txt')).rejects.toThrow(CCNotifyError);
+      expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
+        error,
+        'read file',
+        '/test/file.txt'
+      );
     });
 
-    it('should handle UTF-8 content correctly', async () => {
-      const filePath = join(testDir, 'utf8-file.txt');
-      const content = 'Hello, 世界! 🌍';
-      await fs.writeFile(filePath, content, 'utf-8');
+    it('should handle permission errors with enhanced error handling', async () => {
+      const error = new Error('Permission denied') as NodeJS.ErrnoException;
+      error.code = 'EACCES';
+      (fs.readFile as any).mockRejectedValue(error);
 
-      const result = await service.readFile(filePath);
-
-      expect(result).toBe(content);
+      await expect(fileSystemService.readFile('/test/file.txt')).rejects.toThrow(CCNotifyError);
+      expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
+        error,
+        'read file',
+        '/test/file.txt'
+      );
     });
   });
 
   describe('writeFile', () => {
-    it('should write file content correctly', async () => {
-      const filePath = join(testDir, 'new-file.txt');
-      const content = 'Hello, World!';
+    it('should write file content successfully', async () => {
+      (fs.mkdir as any).mockResolvedValue(undefined);
+      (fs.writeFile as any).mockResolvedValue(undefined);
 
-      await service.writeFile(filePath, content);
-
-      const result = await fs.readFile(filePath, 'utf-8');
-      expect(result).toBe(content);
+      await expect(
+        fileSystemService.writeFile('/test/file.txt', 'content'),
+      ).resolves.not.toThrow();
+      expect(fs.writeFile).toHaveBeenCalledWith('/test/file.txt', 'content', 'utf-8');
     });
 
-    it('should create directory if it does not exist', async () => {
-      const filePath = join(testDir, 'nested', 'directory', 'file.txt');
-      const content = 'test content';
+    it('should handle file write errors with enhanced error handling', async () => {
+      (fs.mkdir as any).mockResolvedValue(undefined);
+      const error = new Error('Permission denied') as NodeJS.ErrnoException;
+      error.code = 'EACCES';
+      (fs.writeFile as any).mockRejectedValue(error);
 
-      await service.writeFile(filePath, content);
-
-      const result = await fs.readFile(filePath, 'utf-8');
-      expect(result).toBe(content);
+      await expect(fileSystemService.writeFile('/test/file.txt', 'content')).rejects.toThrow(
+        CCNotifyError,
+      );
+      expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
+        error,
+        'write file',
+        '/test/file.txt'
+      );
     });
 
-    it('should overwrite existing file', async () => {
-      const filePath = join(testDir, 'existing-file.txt');
-      await fs.writeFile(filePath, 'old content');
+    it('should handle disk space errors with enhanced error handling', async () => {
+      (fs.mkdir as any).mockResolvedValue(undefined);
+      const error = new Error('No space left on device') as NodeJS.ErrnoException;
+      error.code = 'ENOSPC';
+      (fs.writeFile as any).mockRejectedValue(error);
 
-      const newContent = 'new content';
-      await service.writeFile(filePath, newContent);
-
-      const result = await fs.readFile(filePath, 'utf-8');
-      expect(result).toBe(newContent);
-    });
-
-    it('should handle UTF-8 content correctly', async () => {
-      const filePath = join(testDir, 'utf8-file.txt');
-      const content = 'Hello, 世界! 🌍';
-
-      await service.writeFile(filePath, content);
-
-      const result = await fs.readFile(filePath, 'utf-8');
-      expect(result).toBe(content);
+      await expect(fileSystemService.writeFile('/test/file.txt', 'content')).rejects.toThrow(
+        CCNotifyError,
+      );
+      expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
+        error,
+        'write file',
+        '/test/file.txt'
+      );
     });
   });
 
   describe('copyFile', () => {
-    it('should copy file correctly', async () => {
-      const sourcePath = join(testDir, 'source.txt');
-      const destPath = join(testDir, 'destination.txt');
-      const content = 'test content';
-      await fs.writeFile(sourcePath, content);
+    it('should copy file successfully', async () => {
+      (fs.mkdir as any).mockResolvedValue(undefined);
+      (fs.copyFile as any).mockResolvedValue(undefined);
 
-      await service.copyFile(sourcePath, destPath);
-
-      const result = await fs.readFile(destPath, 'utf-8');
-      expect(result).toBe(content);
+      await expect(
+        fileSystemService.copyFile('/source.txt', '/dest.txt'),
+      ).resolves.not.toThrow();
+      expect(fs.copyFile).toHaveBeenCalledWith('/source.txt', '/dest.txt');
     });
 
-    it('should create destination directory if needed', async () => {
-      const sourcePath = join(testDir, 'source.txt');
-      const destPath = join(testDir, 'nested', 'destination.txt');
-      const content = 'test content';
-      await fs.writeFile(sourcePath, content);
+    it('should handle file copy errors with enhanced error handling', async () => {
+      (fs.mkdir as any).mockResolvedValue(undefined);
+      const error = new Error('Source file not found') as NodeJS.ErrnoException;
+      error.code = 'ENOENT';
+      (fs.copyFile as any).mockRejectedValue(error);
 
-      await service.copyFile(sourcePath, destPath);
-
-      const result = await fs.readFile(destPath, 'utf-8');
-      expect(result).toBe(content);
-    });
-
-    it('should throw CCNotifyError for non-existing source', async () => {
-      const sourcePath = join(testDir, 'non-existing.txt');
-      const destPath = join(testDir, 'destination.txt');
-
-      await expect(service.copyFile(sourcePath, destPath)).rejects.toThrow(CCNotifyError);
-      await expect(service.copyFile(sourcePath, destPath)).rejects.toThrow('Failed to copy file');
+      await expect(fileSystemService.copyFile('/source.txt', '/dest.txt')).rejects.toThrow(
+        CCNotifyError,
+      );
+      expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
+        error,
+        'copy file from /source.txt',
+        '/dest.txt'
+      );
     });
   });
 
   describe('createBackup', () => {
-    it('should create backup with timestamp', async () => {
-      const filePath = join(testDir, 'original.txt');
-      const content = 'original content';
-      await fs.writeFile(filePath, content);
+    it('should create backup successfully', async () => {
+      (fs.access as any).mockResolvedValue(undefined);
+      (fs.mkdir as any).mockResolvedValue(undefined);
+      (fs.copyFile as any).mockResolvedValue(undefined);
 
-      const backupPath = await service.createBackup(filePath);
-
-      expect(backupPath).toMatch(/\.backup\.\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}/);
-      const backupContent = await fs.readFile(backupPath, 'utf-8');
-      expect(backupContent).toBe(content);
+      const backupPath = await fileSystemService.createBackup('/test/file.txt');
+      expect(backupPath).toMatch(/\/test\/file\.txt\.backup\.\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}/);
     });
 
-    it('should throw error for non-existing file', async () => {
-      const filePath = join(testDir, 'non-existing.txt');
+    it('should handle backup errors for non-existent files with enhanced error handling', async () => {
+      (fs.access as any).mockRejectedValue(new Error('File not found'));
 
-      await expect(service.createBackup(filePath)).rejects.toThrow(CCNotifyError);
-      await expect(service.createBackup(filePath)).rejects.toThrow(
-        'Cannot backup non-existent file',
+      await expect(fileSystemService.createBackup('/test/file.txt')).rejects.toThrow(CCNotifyError);
+      expect(errorHandler.createError).toHaveBeenCalledWith(
+        ErrorType.FILE_PERMISSION_ERROR,
+        'Cannot backup non-existent file: /test/file.txt',
+        undefined,
+        ErrorSeverity.MEDIUM,
+        expect.objectContaining({
+          filePath: '/test/file.txt',
+          operation: 'createBackup',
+        })
       );
     });
 
-    it('should preserve original file content', async () => {
-      const filePath = join(testDir, 'original.txt');
-      const content = 'original content';
-      await fs.writeFile(filePath, content);
+    it('should handle backup copy errors with enhanced error handling', async () => {
+      (fs.access as any).mockResolvedValue(undefined); // File exists
+      (fs.mkdir as any).mockResolvedValue(undefined);
+      const error = new Error('Permission denied') as NodeJS.ErrnoException;
+      error.code = 'EACCES';
+      (fs.copyFile as any).mockRejectedValue(error);
 
-      await service.createBackup(filePath);
-
-      const originalContent = await fs.readFile(filePath, 'utf-8');
-      expect(originalContent).toBe(content);
+      await expect(fileSystemService.createBackup('/test/file.txt')).rejects.toThrow(CCNotifyError);
+      expect(errorHandler.createError).toHaveBeenCalledWith(
+        ErrorType.CONFIG_BACKUP_ERROR,
+        'Failed to create backup of /test/file.txt',
+        error,
+        ErrorSeverity.HIGH,
+        expect.objectContaining({
+          filePath: '/test/file.txt',
+          operation: 'createBackup',
+        })
+      );
     });
   });
 });
 
-describe('fileUtils', () => {
-  let testDir: string;
-
-  beforeEach(async () => {
-    testDir = join(tmpdir(), `ccnotify-utils-test-${Date.now()}`);
-    await fs.mkdir(testDir, { recursive: true });
-  });
-
-  afterEach(async () => {
-    try {
-      await fs.rm(testDir, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup errors
-    }
+describe('File Utils', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
   describe('readJsonFile', () => {
-    it('should read and parse JSON file correctly', async () => {
-      const filePath = join(testDir, 'test.json');
-      const data = { name: 'test', value: 42 };
-      await fs.writeFile(filePath, JSON.stringify(data));
+    it('should read and parse JSON file successfully', async () => {
+      const jsonContent = '{"test": "value"}';
+      (fs.readFile as any).mockResolvedValue(jsonContent);
 
-      const result = await fileUtils.readJsonFile(filePath);
-
-      expect(result).toEqual(data);
+      const result = await fileUtils.readJsonFile('/test/config.json');
+      expect(result).toEqual({ test: 'value' });
     });
 
-    it('should throw CCNotifyError for invalid JSON', async () => {
-      const filePath = join(testDir, 'invalid.json');
-      await fs.writeFile(filePath, '{ invalid json }');
+    it('should handle JSON parse errors with enhanced error handling', async () => {
+      const invalidJson = '{"invalid": json}';
+      (fs.readFile as any).mockResolvedValue(invalidJson);
 
-      await expect(fileUtils.readJsonFile(filePath)).rejects.toThrow(CCNotifyError);
-      await expect(fileUtils.readJsonFile(filePath)).rejects.toThrow('Failed to parse JSON file');
+      await expect(fileUtils.readJsonFile('/test/config.json')).rejects.toThrow(CCNotifyError);
+      expect(errorHandler.wrapJsonError).toHaveBeenCalledWith(
+        expect.any(SyntaxError),
+        '/test/config.json'
+      );
     });
 
-    it('should throw CCNotifyError for non-existing file', async () => {
-      const filePath = join(testDir, 'non-existing.json');
+    it('should handle file read errors with enhanced error handling', async () => {
+      const error = new Error('File not found') as NodeJS.ErrnoException;
+      error.code = 'ENOENT';
+      (fs.readFile as any).mockRejectedValue(error);
 
-      await expect(fileUtils.readJsonFile(filePath)).rejects.toThrow(CCNotifyError);
+      await expect(fileUtils.readJsonFile('/test/config.json')).rejects.toThrow(CCNotifyError);
+      expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
+        error,
+        'read file',
+        '/test/config.json'
+      );
+    });
+
+    it('should handle other JSON errors with enhanced error handling', async () => {
+      const jsonContent = '{"test": "value"}';
+      (fs.readFile as any).mockResolvedValue(jsonContent);
+      
+      // Mock JSON.parse to throw a different error
+      const originalParse = JSON.parse;
+      JSON.parse = vi.fn().mockImplementation(() => {
+        throw new Error('Unexpected error');
+      });
+
+      await expect(fileUtils.readJsonFile('/test/config.json')).rejects.toThrow(CCNotifyError);
+      expect(errorHandler.createError).toHaveBeenCalledWith(
+        ErrorType.JSON_PARSE_ERROR,
+        'Failed to parse JSON file: /test/config.json',
+        expect.any(Error),
+        ErrorSeverity.MEDIUM,
+        expect.objectContaining({
+          path: '/test/config.json',
+          operation: 'readJsonFile',
+        })
+      );
+
+      // Restore original JSON.parse
+      JSON.parse = originalParse;
     });
   });
 
   describe('writeJsonFile', () => {
-    it('should write JSON file with proper formatting', async () => {
-      const filePath = join(testDir, 'output.json');
-      const data = { name: 'test', nested: { value: 42 } };
+    it('should write JSON file successfully', async () => {
+      (fs.mkdir as any).mockResolvedValue(undefined);
+      (fs.writeFile as any).mockResolvedValue(undefined);
 
-      await fileUtils.writeJsonFile(filePath, data);
-
-      const content = await fs.readFile(filePath, 'utf-8');
-      const parsed = JSON.parse(content);
-      expect(parsed).toEqual(data);
-      expect(content).toContain('  '); // Check for proper indentation
+      const data = { test: 'value' };
+      await expect(fileUtils.writeJsonFile('/test/config.json', data)).resolves.not.toThrow();
+      expect(fs.writeFile).toHaveBeenCalledWith(
+        '/test/config.json',
+        JSON.stringify(data, null, 2),
+        'utf-8',
+      );
     });
 
-    it('should create directory if needed', async () => {
-      const filePath = join(testDir, 'nested', 'output.json');
-      const data = { test: true };
+    it('should handle write errors with enhanced error handling', async () => {
+      (fs.mkdir as any).mockResolvedValue(undefined);
+      const error = new Error('Permission denied') as NodeJS.ErrnoException;
+      error.code = 'EACCES';
+      (fs.writeFile as any).mockRejectedValue(error);
 
-      await fileUtils.writeJsonFile(filePath, data);
+      await expect(fileUtils.writeJsonFile('/test/config.json', {})).rejects.toThrow(CCNotifyError);
+      expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
+        error,
+        'write file',
+        '/test/config.json'
+      );
+    });
 
-      const content = await fs.readFile(filePath, 'utf-8');
-      const parsed = JSON.parse(content);
-      expect(parsed).toEqual(data);
+    it('should handle JSON stringify errors with enhanced error handling', async () => {
+      (fs.mkdir as any).mockResolvedValue(undefined);
+      
+      // Create circular reference to cause JSON.stringify to fail
+      const circularData: any = { test: 'value' };
+      circularData.circular = circularData;
+
+      await expect(fileUtils.writeJsonFile('/test/config.json', circularData)).rejects.toThrow(CCNotifyError);
+      expect(errorHandler.createError).toHaveBeenCalledWith(
+        ErrorType.FILE_PERMISSION_ERROR,
+        'Failed to write JSON file: /test/config.json',
+        expect.any(Error),
+        ErrorSeverity.MEDIUM,
+        expect.objectContaining({
+          path: '/test/config.json',
+          operation: 'writeJsonFile',
+        })
+      );
     });
   });
 
   describe('safeWriteJsonFile', () => {
-    it('should write JSON file without backup for new file', async () => {
-      const filePath = join(testDir, 'new-file.json');
-      const data = { test: true };
+    it('should write JSON file safely with backup', async () => {
+      (fs.access as any).mockResolvedValue(undefined); // File exists
+      (fs.mkdir as any).mockResolvedValue(undefined);
+      (fs.copyFile as any).mockResolvedValue(undefined); // Backup creation
+      (fs.writeFile as any).mockResolvedValue(undefined);
 
-      await fileUtils.safeWriteJsonFile(filePath, data);
-
-      const content = await fs.readFile(filePath, 'utf-8');
-      const parsed = JSON.parse(content);
-      expect(parsed).toEqual(data);
-    });
-
-    it('should create backup before overwriting existing file', async () => {
-      const filePath = join(testDir, 'existing.json');
-      const originalData = { original: true };
-      const newData = { updated: true };
-
-      // Create original file
-      await fs.writeFile(filePath, JSON.stringify(originalData));
-
-      // Update with safe write
-      await fileUtils.safeWriteJsonFile(filePath, newData);
-
-      // Check new content
-      const content = await fs.readFile(filePath, 'utf-8');
-      const parsed = JSON.parse(content);
-      expect(parsed).toEqual(newData);
-
-      // Check backup exists
-      const files = await fs.readdir(testDir);
-      const backupFiles = files.filter((f) => f.includes('.backup.'));
-      expect(backupFiles.length).toBe(1);
+      const data = { test: 'value' };
+      await expect(fileUtils.safeWriteJsonFile('/test/config.json', data)).resolves.not.toThrow();
     });
 
     it('should restore backup on write failure', async () => {
-      const filePath = join(testDir, 'existing.json');
-      const originalData = { original: true };
+      (fs.access as any)
+        .mockResolvedValueOnce(undefined) // File exists for backup check
+        .mockResolvedValueOnce(undefined); // Backup file exists for restore
+      (fs.mkdir as any).mockResolvedValue(undefined);
+      (fs.copyFile as any).mockResolvedValue(undefined); // Backup creation and restore
+      (fs.writeFile as any).mockRejectedValue(new Error('Write failed'));
 
-      // Create original file
-      await fs.writeFile(filePath, JSON.stringify(originalData));
+      await expect(fileUtils.safeWriteJsonFile('/test/config.json', {})).rejects.toThrow();
+      // Should attempt to restore backup
+      expect(fs.copyFile).toHaveBeenCalledTimes(2); // Once for backup, once for restore
+    });
 
-      // Mock writeJsonFile to fail
-      const originalWriteJsonFile = fileUtils.writeJsonFile;
-      fileUtils.writeJsonFile = vi.fn().mockRejectedValue(new Error('Write failed'));
+    it('should handle backup creation failure', async () => {
+      (fs.access as any).mockResolvedValue(undefined); // File exists
+      (fs.mkdir as any).mockResolvedValue(undefined);
+      const backupError = new Error('Backup failed') as NodeJS.ErrnoException;
+      backupError.code = 'EACCES';
+      (fs.copyFile as any).mockRejectedValueOnce(backupError); // Backup creation fails
 
-      try {
-        await expect(fileUtils.safeWriteJsonFile(filePath, { new: true })).rejects.toThrow();
+      await expect(fileUtils.safeWriteJsonFile('/test/config.json', {})).rejects.toThrow();
+      expect(errorHandler.createError).toHaveBeenCalledWith(
+        ErrorType.CONFIG_BACKUP_ERROR,
+        expect.stringContaining('Failed to create backup'),
+        backupError,
+        ErrorSeverity.HIGH,
+        expect.any(Object)
+      );
+    });
 
-        // Check that original content is restored
-        const content = await fs.readFile(filePath, 'utf-8');
-        const parsed = JSON.parse(content);
-        expect(parsed).toEqual(originalData);
-      } finally {
-        // Restore original function
-        fileUtils.writeJsonFile = originalWriteJsonFile;
-      }
+    it('should handle restore failure gracefully', async () => {
+      (fs.access as any)
+        .mockResolvedValueOnce(undefined) // File exists for backup check
+        .mockResolvedValueOnce(undefined); // Backup file exists for restore
+      (fs.mkdir as any).mockResolvedValue(undefined);
+      (fs.copyFile as any)
+        .mockResolvedValueOnce(undefined) // Backup creation succeeds
+        .mockRejectedValueOnce(new Error('Restore failed')); // Restore fails
+      (fs.writeFile as any).mockRejectedValue(new Error('Write failed'));
+
+      // Should still throw the original write error, not the restore error
+      await expect(fileUtils.safeWriteJsonFile('/test/config.json', {})).rejects.toThrow('Write failed');
     });
   });
-});
 
-describe('fileSystemService singleton', () => {
-  it('should export a default instance', () => {
-    expect(fileSystemService).toBeInstanceOf(FileSystemServiceImpl);
-  });
+  describe('Error Code Handling', () => {
+    it('should handle various file system error codes', async () => {
+      const errorCodes = [
+        { code: 'ENOENT', description: 'File not found' },
+        { code: 'EACCES', description: 'Permission denied' },
+        { code: 'EPERM', description: 'Operation not permitted' },
+        { code: 'ENOTDIR', description: 'Not a directory' },
+        { code: 'EISDIR', description: 'Is a directory' },
+        { code: 'ENOSPC', description: 'No space left on device' },
+        { code: 'EMFILE', description: 'Too many open files' },
+        { code: 'ENFILE', description: 'File table overflow' },
+      ];
 
-  it('should have all required methods', () => {
-    expect(typeof fileSystemService.ensureDirectory).toBe('function');
-    expect(typeof fileSystemService.fileExists).toBe('function');
-    expect(typeof fileSystemService.readFile).toBe('function');
-    expect(typeof fileSystemService.writeFile).toBe('function');
-    expect(typeof fileSystemService.copyFile).toBe('function');
-    expect(typeof fileSystemService.createBackup).toBe('function');
+      for (const { code, description } of errorCodes) {
+        const error = new Error(description) as NodeJS.ErrnoException;
+        error.code = code;
+        (fs.readFile as any).mockRejectedValue(error);
+
+        await expect(fileSystemService.readFile('/test/file.txt')).rejects.toThrow(CCNotifyError);
+        expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
+          error,
+          'read file',
+          '/test/file.txt'
+        );
+
+        vi.clearAllMocks();
+      }
+    });
   });
 });

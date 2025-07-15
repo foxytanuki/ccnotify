@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import { dirname } from 'node:path';
-import { CCNotifyError, ErrorType } from '../types/index.js';
+import { CCNotifyError, ErrorType, ErrorSeverity } from '../types/index.js';
+import { errorHandler } from '../services/error-handler.js';
 
 /**
  * File system service interface
@@ -25,11 +26,7 @@ export class FileSystemServiceImpl implements FileSystemService {
     try {
       await fs.mkdir(path, { recursive: true });
     } catch (error) {
-      throw new CCNotifyError(
-        ErrorType.FILE_PERMISSION_ERROR,
-        `Failed to create directory: ${path}`,
-        error as Error,
-      );
+      throw errorHandler.wrapFileSystemError(error, 'create directory', path);
     }
   }
 
@@ -52,11 +49,7 @@ export class FileSystemServiceImpl implements FileSystemService {
     try {
       return await fs.readFile(path, 'utf-8');
     } catch (error) {
-      throw new CCNotifyError(
-        ErrorType.FILE_PERMISSION_ERROR,
-        `Failed to read file: ${path}`,
-        error as Error,
-      );
+      throw errorHandler.wrapFileSystemError(error, 'read file', path);
     }
   }
 
@@ -72,11 +65,7 @@ export class FileSystemServiceImpl implements FileSystemService {
       // Write the file
       await fs.writeFile(path, content, 'utf-8');
     } catch (error) {
-      throw new CCNotifyError(
-        ErrorType.FILE_PERMISSION_ERROR,
-        `Failed to write file: ${path}`,
-        error as Error,
-      );
+      throw errorHandler.wrapFileSystemError(error, 'write file', path);
     }
   }
 
@@ -92,11 +81,7 @@ export class FileSystemServiceImpl implements FileSystemService {
       // Copy the file
       await fs.copyFile(source, destination);
     } catch (error) {
-      throw new CCNotifyError(
-        ErrorType.FILE_PERMISSION_ERROR,
-        `Failed to copy file from ${source} to ${destination}`,
-        error as Error,
-      );
+      throw errorHandler.wrapFileSystemError(error, `copy file from ${source}`, destination);
     }
   }
 
@@ -107,9 +92,12 @@ export class FileSystemServiceImpl implements FileSystemService {
     try {
       // Check if the original file exists
       if (!(await this.fileExists(filePath))) {
-        throw new CCNotifyError(
+        throw errorHandler.createError(
           ErrorType.FILE_PERMISSION_ERROR,
           `Cannot backup non-existent file: ${filePath}`,
+          undefined,
+          ErrorSeverity.MEDIUM,
+          { filePath, operation: 'createBackup' },
         );
       }
 
@@ -125,10 +113,12 @@ export class FileSystemServiceImpl implements FileSystemService {
       if (error instanceof CCNotifyError) {
         throw error;
       }
-      throw new CCNotifyError(
+      throw errorHandler.createError(
         ErrorType.CONFIG_BACKUP_ERROR,
         `Failed to create backup of ${filePath}`,
         error as Error,
+        ErrorSeverity.HIGH,
+        { filePath, operation: 'createBackup' },
       );
     }
   }
@@ -154,10 +144,18 @@ export const fileUtils = {
       if (error instanceof CCNotifyError) {
         throw error;
       }
-      throw new CCNotifyError(
+      
+      // Use enhanced JSON error wrapping
+      if (error instanceof SyntaxError) {
+        throw errorHandler.wrapJsonError(error, path);
+      }
+      
+      throw errorHandler.createError(
         ErrorType.JSON_PARSE_ERROR,
         `Failed to parse JSON file: ${path}`,
         error as Error,
+        ErrorSeverity.MEDIUM,
+        { path, operation: 'readJsonFile' },
       );
     }
   },
@@ -173,10 +171,12 @@ export const fileUtils = {
       if (error instanceof CCNotifyError) {
         throw error;
       }
-      throw new CCNotifyError(
+      throw errorHandler.createError(
         ErrorType.FILE_PERMISSION_ERROR,
         `Failed to write JSON file: ${path}`,
         error as Error,
+        ErrorSeverity.MEDIUM,
+        { path, operation: 'writeJsonFile' },
       );
     }
   },

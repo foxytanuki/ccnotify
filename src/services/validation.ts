@@ -1,4 +1,5 @@
-import { CCNotifyError, ErrorType } from '../types/index.js';
+import { CCNotifyError, ErrorType, ErrorSeverity } from '../types/index.js';
+import { errorHandler } from './error-handler.js';
 
 /**
  * Discord webhook URL validation
@@ -6,9 +7,12 @@ import { CCNotifyError, ErrorType } from '../types/index.js';
  */
 export function validateDiscordWebhookUrl(url: string): void {
   if (!url || typeof url !== 'string') {
-    throw new CCNotifyError(
+    throw errorHandler.createError(
       ErrorType.INVALID_WEBHOOK_URL,
       'Discord webhook URL is required and must be a string',
+      undefined,
+      ErrorSeverity.MEDIUM,
+      { url: typeof url, validation: 'required_string_check' },
     );
   }
 
@@ -16,9 +20,16 @@ export function validateDiscordWebhookUrl(url: string): void {
   const discordWebhookPattern = /^https:\/\/discord(?:app)?\.com\/api\/webhooks\/\d+\/[\w-]+$/;
 
   if (!discordWebhookPattern.test(url)) {
-    throw new CCNotifyError(
+    throw errorHandler.createError(
       ErrorType.INVALID_WEBHOOK_URL,
       'Invalid Discord webhook URL format. Expected format: https://discord.com/api/webhooks/{id}/{token}',
+      undefined,
+      ErrorSeverity.MEDIUM,
+      { 
+        url: url.replace(/\/[\w-]+$/, '/***'), // Hide token in logs
+        validation: 'format_check',
+        pattern: 'discord_webhook_url',
+      },
     );
   }
 }
@@ -29,9 +40,12 @@ export function validateDiscordWebhookUrl(url: string): void {
  */
 export function validateNtfyTopicName(topicName: string): void {
   if (!topicName || typeof topicName !== 'string') {
-    throw new CCNotifyError(
+    throw errorHandler.createError(
       ErrorType.INVALID_TOPIC_NAME,
       'ntfy topic name is required and must be a string',
+      undefined,
+      ErrorSeverity.MEDIUM,
+      { topicName: typeof topicName, validation: 'required_string_check' },
     );
   }
 
@@ -39,9 +53,17 @@ export function validateNtfyTopicName(topicName: string): void {
   const ntfyTopicPattern = /^[a-zA-Z0-9_-]{1,64}$/;
 
   if (!ntfyTopicPattern.test(topicName)) {
-    throw new CCNotifyError(
+    throw errorHandler.createError(
       ErrorType.INVALID_TOPIC_NAME,
       'Invalid ntfy topic name. Must be 1-64 characters long and contain only letters, numbers, hyphens, and underscores',
+      undefined,
+      ErrorSeverity.MEDIUM,
+      { 
+        topicName,
+        validation: 'format_check',
+        pattern: 'ntfy_topic_name',
+        length: topicName.length,
+      },
     );
   }
 
@@ -52,9 +74,17 @@ export function validateNtfyTopicName(topicName: string): void {
     topicName.endsWith('-') ||
     topicName.endsWith('_')
   ) {
-    throw new CCNotifyError(
+    throw errorHandler.createError(
       ErrorType.INVALID_TOPIC_NAME,
       'ntfy topic name cannot start or end with hyphens or underscores',
+      undefined,
+      ErrorSeverity.MEDIUM,
+      { 
+        topicName,
+        validation: 'boundary_check',
+        startsWithInvalid: topicName.startsWith('-') || topicName.startsWith('_'),
+        endsWithInvalid: topicName.endsWith('-') || topicName.endsWith('_'),
+      },
     );
   }
 }

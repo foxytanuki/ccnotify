@@ -1,6 +1,7 @@
 import { dirname } from 'node:path';
-import { CCNotifyError, ErrorType, type StopHook } from '../types/index.js';
+import { CCNotifyError, ErrorType, ErrorSeverity, type StopHook } from '../types/index.js';
 import { fileSystemService } from '../utils/file.js';
+import { errorHandler } from './error-handler.js';
 
 /**
  * Hook generator interface
@@ -54,26 +55,53 @@ export class HookGeneratorImpl implements HookGenerator {
    */
   async createNtfyScript(topicName: string, scriptPath: string): Promise<void> {
     try {
+      await errorHandler.logDebug('Creating ntfy script', { topicName, scriptPath });
+      
       // Ensure the directory exists
       const scriptDir = dirname(scriptPath);
-      await fileSystemService.ensureDirectory(scriptDir);
+      try {
+        await fileSystemService.ensureDirectory(scriptDir);
+      } catch (error) {
+        throw errorHandler.wrapFileSystemError(error, 'create script directory', scriptDir);
+      }
 
       // Generate the script content
       const scriptContent = this.generateNtfyScriptContent(topicName);
 
       // Write the script file
-      await fileSystemService.writeFile(scriptPath, scriptContent);
+      try {
+        await fileSystemService.writeFile(scriptPath, scriptContent);
+      } catch (error) {
+        throw errorHandler.wrapFileSystemError(error, 'write script file', scriptPath);
+      }
 
       // Make the script executable (Unix-like systems)
       if (process.platform !== 'win32') {
-        const { chmod } = await import('node:fs/promises');
-        await chmod(scriptPath, 0o755);
+        try {
+          const { chmod } = await import('node:fs/promises');
+          await chmod(scriptPath, 0o755);
+          await errorHandler.logDebug('Script made executable');
+        } catch (error) {
+          // Log warning but don't fail - script can still work without execute permissions
+          await errorHandler.logWarning('Failed to make script executable', { 
+            scriptPath, 
+            error: (error as Error).message 
+          });
+        }
       }
+
+      await errorHandler.logDebug('ntfy script created successfully');
     } catch (error) {
-      throw new CCNotifyError(
-        ErrorType.FILE_PERMISSION_ERROR,
+      if (error instanceof CCNotifyError) {
+        throw error;
+      }
+      
+      throw errorHandler.createError(
+        ErrorType.SCRIPT_CREATION_ERROR,
         `Failed to create ntfy script at ${scriptPath}`,
         error as Error,
+        ErrorSeverity.HIGH,
+        { topicName, scriptPath, operation: 'createNtfyScript' },
       );
     }
   }

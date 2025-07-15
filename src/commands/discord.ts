@@ -3,6 +3,7 @@ import type { Command } from 'commander';
 import { configManager } from '../services/config.js';
 import { hookGenerator } from '../services/hooks.js';
 import { validateAndSanitizeDiscordUrl } from '../services/validation.js';
+import { errorHandler } from '../services/error-handler.js';
 import { CCNotifyError, ErrorType, type DiscordCommandArgs } from '../types/index.js';
 import { fileSystemService } from '../utils/file.js';
 
@@ -17,12 +18,21 @@ export function registerDiscordCommand(program: Command): void {
     .option('-g, --global', 'Create global configuration in ~/.claude/')
     .action(async (webhookUrl: string, options: { global?: boolean }) => {
       try {
+        await errorHandler.logInfo('Starting Discord command execution', {
+          webhookUrl: webhookUrl.replace(/\/[\w-]+$/, '/***'), // Hide token in logs
+          global: options.global,
+        });
+
         await handleDiscordCommand({
           webhookUrl,
           options: { global: options.global },
         });
       } catch (error) {
-        handleCommandError(error);
+        await errorHandler.handleUnknownError(error, {
+          command: 'discord',
+          webhookUrl: webhookUrl.replace(/\/[\w-]+$/, '/***'),
+          global: options.global,
+        });
       }
     });
 }
@@ -32,27 +42,44 @@ export function registerDiscordCommand(program: Command): void {
  */
 export async function handleDiscordCommand(args: DiscordCommandArgs): Promise<void> {
   try {
+    await errorHandler.logDebug('Validating Discord webhook URL');
+    
     // Validate and sanitize webhook URL
     const sanitizedWebhookUrl = validateAndSanitizeDiscordUrl(args.webhookUrl);
 
+    await errorHandler.logDebug('Getting configuration path', { global: args.options.global });
+    
     // Get configuration path
     const configPath = configManager.getConfigPath(args.options.global ?? false);
     const configDir = dirname(configPath);
 
-    // Ensure configuration directory exists
-    await fileSystemService.ensureDirectory(configDir);
+    await errorHandler.logDebug('Ensuring configuration directory exists', { configDir });
+    
+    // Ensure configuration directory exists with enhanced error handling
+    try {
+      await fileSystemService.ensureDirectory(configDir);
+    } catch (error) {
+      throw errorHandler.wrapFileSystemError(error, 'create configuration directory', configDir);
+    }
 
+    await errorHandler.logDebug('Loading existing configuration', { configPath });
+    
     // Load existing configuration
     const existingConfig = await configManager.loadConfig(configPath);
 
     // Create backup if config file exists
     if (await fileSystemService.fileExists(configPath)) {
+      await errorHandler.logDebug('Creating backup of existing configuration');
       await configManager.backupConfig(configPath);
     }
 
+    await errorHandler.logDebug('Generating Discord hook');
+    
     // Generate Discord hook
     const discordHook = hookGenerator.generateDiscordHook(sanitizedWebhookUrl);
 
+    await errorHandler.logDebug('Merging configuration');
+    
     // Merge with existing configuration
     const updatedConfig = configManager.mergeConfig(existingConfig, {
       hooks: {
@@ -60,6 +87,8 @@ export async function handleDiscordCommand(args: DiscordCommandArgs): Promise<vo
       },
     });
 
+    await errorHandler.logDebug('Saving updated configuration');
+    
     // Save updated configuration
     await configManager.saveConfig(configPath, updatedConfig);
 
@@ -68,48 +97,28 @@ export async function handleDiscordCommand(args: DiscordCommandArgs): Promise<vo
     console.log(`✅ Discord Stop Hook created successfully!`);
     console.log(`📁 Configuration: ${configPath} (${configType})`);
     console.log(`🔗 Webhook URL: ${sanitizedWebhookUrl.replace(/\/[\w-]+$/, '/***')}`); // Hide token
+
+    await errorHandler.logInfo('Discord Stop Hook created successfully', {
+      configPath,
+      configType,
+    });
   } catch (error) {
     if (error instanceof CCNotifyError) {
       throw error;
     }
-    throw new CCNotifyError(
-      ErrorType.FILE_PERMISSION_ERROR,
+    
+    // Wrap unknown errors with context
+    throw errorHandler.createError(
+      ErrorType.COMMAND_ERROR,
       'Failed to create Discord Stop Hook',
       error as Error,
+      undefined,
+      {
+        command: 'discord',
+        global: args.options.global,
+        webhookUrl: args.webhookUrl.replace(/\/[\w-]+$/, '/***'),
+      },
     );
   }
 }
 
-/**
- * Handle command errors with user-friendly messages
- */
-function handleCommandError(error: unknown): void {
-  if (error instanceof CCNotifyError) {
-    console.error(`❌ Error: ${error.message}`);
-    if (error.originalError) {
-      console.error(`   Details: ${error.originalError.message}`);
-    }
-    process.exit(getExitCode(error.type));
-  } else {
-    console.error(`❌ Unexpected error: ${error}`);
-    process.exit(1);
-  }
-}
-
-/**
- * Get appropriate exit code for error type
- */
-function getExitCode(errorType: ErrorType): number {
-  switch (errorType) {
-    case ErrorType.INVALID_WEBHOOK_URL:
-      return 2;
-    case ErrorType.FILE_PERMISSION_ERROR:
-      return 3;
-    case ErrorType.JSON_PARSE_ERROR:
-      return 4;
-    case ErrorType.CONFIG_BACKUP_ERROR:
-      return 5;
-    default:
-      return 1;
-  }
-}

@@ -3,6 +3,7 @@ import type { Command } from 'commander';
 import { configManager } from '../services/config.js';
 import { hookGenerator } from '../services/hooks.js';
 import { validateAndSanitizeNtfyTopic } from '../services/validation.js';
+import { errorHandler } from '../services/error-handler.js';
 import { CCNotifyError, ErrorType, type NtfyCommandArgs } from '../types/index.js';
 import { fileSystemService } from '../utils/file.js';
 
@@ -17,12 +18,21 @@ export function registerNtfyCommand(program: Command): void {
     .option('-g, --global', 'Create global configuration in ~/.claude/')
     .action(async (topicName: string, options: { global?: boolean }) => {
       try {
+        await errorHandler.logInfo('Starting ntfy command execution', {
+          topicName,
+          global: options.global,
+        });
+
         await handleNtfyCommand({
           topicName,
           options: { global: options.global },
         });
       } catch (error) {
-        handleCommandError(error);
+        await errorHandler.handleUnknownError(error, {
+          command: 'ntfy',
+          topicName,
+          global: options.global,
+        });
       }
     });
 }
@@ -32,27 +42,44 @@ export function registerNtfyCommand(program: Command): void {
  */
 export async function handleNtfyCommand(args: NtfyCommandArgs): Promise<void> {
   try {
+    await errorHandler.logDebug('Validating ntfy topic name');
+    
     // Validate and sanitize topic name
     const sanitizedTopicName = validateAndSanitizeNtfyTopic(args.topicName);
 
+    await errorHandler.logDebug('Getting configuration path', { global: args.options.global });
+    
     // Get configuration path
     const configPath = configManager.getConfigPath(args.options.global ?? false);
     const configDir = dirname(configPath);
 
-    // Ensure configuration directory exists
-    await fileSystemService.ensureDirectory(configDir);
+    await errorHandler.logDebug('Ensuring configuration directory exists', { configDir });
+    
+    // Ensure configuration directory exists with enhanced error handling
+    try {
+      await fileSystemService.ensureDirectory(configDir);
+    } catch (error) {
+      throw errorHandler.wrapFileSystemError(error, 'create configuration directory', configDir);
+    }
 
+    await errorHandler.logDebug('Loading existing configuration', { configPath });
+    
     // Load existing configuration
     const existingConfig = await configManager.loadConfig(configPath);
 
     // Create backup if config file exists
     if (await fileSystemService.fileExists(configPath)) {
+      await errorHandler.logDebug('Creating backup of existing configuration');
       await configManager.backupConfig(configPath);
     }
 
+    await errorHandler.logDebug('Generating ntfy hook');
+    
     // Generate ntfy hook
     const ntfyHook = hookGenerator.generateNtfyHook(sanitizedTopicName);
 
+    await errorHandler.logDebug('Merging configuration');
+    
     // Merge with existing configuration
     const updatedConfig = configManager.mergeConfig(existingConfig, {
       hooks: {
@@ -60,12 +87,21 @@ export async function handleNtfyCommand(args: NtfyCommandArgs): Promise<void> {
       },
     });
 
+    await errorHandler.logDebug('Saving updated configuration');
+    
     // Save updated configuration
     await configManager.saveConfig(configPath, updatedConfig);
 
     // Create ntfy.sh script in the same directory as settings.json
     const scriptPath = join(configDir, 'ntfy.sh');
-    await hookGenerator.createNtfyScript(sanitizedTopicName, scriptPath);
+    
+    await errorHandler.logDebug('Creating ntfy script', { scriptPath });
+    
+    try {
+      await hookGenerator.createNtfyScript(sanitizedTopicName, scriptPath);
+    } catch (error) {
+      throw errorHandler.wrapFileSystemError(error, 'create ntfy script', scriptPath);
+    }
 
     // Success message
     const configType = args.options.global ? 'global' : 'local';
@@ -73,48 +109,31 @@ export async function handleNtfyCommand(args: NtfyCommandArgs): Promise<void> {
     console.log(`📁 Configuration: ${configPath} (${configType})`);
     console.log(`📜 Script: ${scriptPath}`);
     console.log(`📢 Topic: ${sanitizedTopicName}`);
+
+    await errorHandler.logInfo('ntfy Stop Hook created successfully', {
+      configPath,
+      configType,
+      scriptPath,
+      topicName: sanitizedTopicName,
+    });
   } catch (error) {
     if (error instanceof CCNotifyError) {
       throw error;
     }
-    throw new CCNotifyError(
-      ErrorType.FILE_PERMISSION_ERROR,
+    
+    // Wrap unknown errors with context
+    throw errorHandler.createError(
+      ErrorType.COMMAND_ERROR,
       'Failed to create ntfy Stop Hook',
       error as Error,
+      undefined,
+      {
+        command: 'ntfy',
+        global: args.options.global,
+        topicName: args.topicName,
+      },
     );
   }
 }
 
-/**
- * Handle command errors with user-friendly messages
- */
-function handleCommandError(error: unknown): void {
-  if (error instanceof CCNotifyError) {
-    console.error(`❌ Error: ${error.message}`);
-    if (error.originalError) {
-      console.error(`   Details: ${error.originalError.message}`);
-    }
-    process.exit(getExitCode(error.type));
-  } else {
-    console.error(`❌ Unexpected error: ${error}`);
-    process.exit(1);
-  }
-}
 
-/**
- * Get appropriate exit code for error type
- */
-function getExitCode(errorType: ErrorType): number {
-  switch (errorType) {
-    case ErrorType.INVALID_TOPIC_NAME:
-      return 2;
-    case ErrorType.FILE_PERMISSION_ERROR:
-      return 3;
-    case ErrorType.JSON_PARSE_ERROR:
-      return 4;
-    case ErrorType.CONFIG_BACKUP_ERROR:
-      return 5;
-    default:
-      return 1;
-  }
-}
