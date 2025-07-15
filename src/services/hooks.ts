@@ -9,6 +9,7 @@ import { errorHandler } from './error-handler.js';
 export interface HookGenerator {
   generateDiscordHook(webhookUrl: string): StopHook;
   generateNtfyHook(topicName: string): StopHook;
+  generateMacOSHook(title?: string): StopHook;
   createNtfyScript(topicName: string, scriptPath: string): Promise<void>;
 }
 
@@ -45,6 +46,23 @@ export class HookGeneratorImpl implements HookGenerator {
         {
           type: 'command',
           command: ntfyCommand,
+        },
+      ],
+    };
+  }
+
+  /**
+   * Generate macOS notification Stop Hook configuration
+   */
+  generateMacOSHook(title?: string): StopHook {
+    const macosCommand = this.createMacOSCommand(title);
+
+    return {
+      matcher: 'macos-notification',
+      hooks: [
+        {
+          type: 'command',
+          command: macosCommand,
         },
       ],
     };
@@ -208,6 +226,61 @@ rm -f "$TEMP_FILE"
 if [ -n "$LATEST_MSG" ]; then
   echo "$LATEST_MSG" | sed 's/^/ /' | head -c 500 | \\
   curl -H "Title: \${USER_MSG:0:100}" -d @- "ntfy.sh/\${TOPIC_NAME}"
+fi`.trim();
+
+    return command;
+  }
+
+  /**
+   * Create macOS notification command with transcript processing and sound integration
+   */
+  private createMacOSCommand(title?: string): string {
+    // Generate the bash script with proper title handling
+    const titleLogic = title 
+      ? `NOTIFICATION_TITLE="${title.replace(/"/g, '\\"')}"` 
+      : 'NOTIFICATION_TITLE="${USER_MSG:0:256}"';
+
+    const command = `#!/bin/bash
+# Process transcript and send macOS notification
+TRANSCRIPT=$(jq -r .transcript_path)
+
+# Get latest assistant message
+LATEST_MSG=$(tail -1 "$TRANSCRIPT" | jq -r '.message.content[0].text // empty')
+
+# Get latest user message using a temporary file for portability
+USER_MSG=""
+TEMP_FILE=$(mktemp)
+tac "$TRANSCRIPT" > "$TEMP_FILE"
+while IFS= read -r line; do
+  TYPE=$(echo "$line" | jq -r '.type // empty')
+  if [ "$TYPE" = "user" ]; then
+    ROLE=$(echo "$line" | jq -r '.message.role // empty')
+    if [ "$ROLE" = "user" ]; then
+      CONTENT=$(echo "$line" | jq -r '.message.content // empty')
+      # Only use content if it's a string and doesn't start with [
+      if [ -n "$CONTENT" ] && [ "\${CONTENT:0:1}" != "[" ]; then
+        USER_MSG="$CONTENT"
+        break
+      fi
+    fi
+  fi
+done < "$TEMP_FILE"
+rm -f "$TEMP_FILE"
+
+# Send notification only if assistant message is not empty
+if [ -n "$LATEST_MSG" ]; then
+  # Set notification title (custom title if provided, otherwise use user message truncated to 256 chars for macOS limit)
+  ${titleLogic}
+  
+  # Use assistant message as body (truncated to 1000 chars for macOS limit)
+  NOTIFICATION_BODY="\${LATEST_MSG:0:1000}"
+  
+  # Escape quotes for AppleScript
+  ESCAPED_TITLE=$(echo "$NOTIFICATION_TITLE" | sed 's/"/\\\\"/g')
+  ESCAPED_BODY=$(echo "$NOTIFICATION_BODY" | sed 's/"/\\\\"/g')
+  
+  # Play sound and display macOS notification
+  afplay /System/Library/Sounds/Pop.aiff & osascript -e "display notification \\"$ESCAPED_BODY\\" with title \\"Claude Code\\" subtitle \\"$ESCAPED_TITLE\\"" &
 fi`.trim();
 
     return command;

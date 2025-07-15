@@ -140,18 +140,130 @@ describe('HookGeneratorImpl', () => {
         hooks: [
           {
             type: 'command',
-            command: 'bash "$(dirname "$0")/ntfy.sh"',
+            command: expect.stringContaining('TRANSCRIPT=$(jq -r .transcript_path)'),
           },
         ],
       });
     });
 
-    it('should use relative path to ntfy.sh script', () => {
-      const topicName = 'another-topic';
+    it('should include topic name in the command', () => {
+      const topicName = 'my-test-topic';
 
       const result = hookGenerator.generateNtfyHook(topicName);
 
-      expect(result.hooks[0].command).toBe('bash "$(dirname "$0")/ntfy.sh"');
+      expect(result.hooks[0].command).toContain(`DEFAULT_TOPIC_NAME="${topicName}"`);
+    });
+
+    it('should include transcript processing logic', () => {
+      const topicName = 'test-topic';
+
+      const result = hookGenerator.generateNtfyHook(topicName);
+      const command = result.hooks[0].command;
+
+      expect(command).toContain('TRANSCRIPT=$(jq -r .transcript_path)');
+      expect(command).toContain('LATEST_MSG=$(tail -1 "$TRANSCRIPT"');
+      expect(command).toContain('while IFS= read -r line; do');
+    });
+  });
+
+  describe('generateMacOSHook', () => {
+    it('should generate macOS hook configuration with correct structure', () => {
+      const result = hookGenerator.generateMacOSHook();
+
+      expect(result).toEqual({
+        matcher: 'macos-notification',
+        hooks: [
+          {
+            type: 'command',
+            command: expect.stringContaining('TRANSCRIPT=$(jq -r .transcript_path)'),
+          },
+        ],
+      });
+    });
+
+    it('should generate hook with custom title', () => {
+      const customTitle = 'Custom Notification Title';
+
+      const result = hookGenerator.generateMacOSHook(customTitle);
+      const command = result.hooks[0].command;
+
+      expect(command).toContain(`NOTIFICATION_TITLE="${customTitle}"`);
+    });
+
+    it('should generate hook without custom title using user message', () => {
+      const result = hookGenerator.generateMacOSHook();
+      const command = result.hooks[0].command;
+
+      expect(command).toContain('NOTIFICATION_TITLE="${USER_MSG:0:256}"');
+    });
+
+    it('should include transcript processing logic', () => {
+      const result = hookGenerator.generateMacOSHook();
+      const command = result.hooks[0].command;
+
+      expect(command).toContain('TRANSCRIPT=$(jq -r .transcript_path)');
+      expect(command).toContain('LATEST_MSG=$(tail -1 "$TRANSCRIPT"');
+      expect(command).toContain('while IFS= read -r line; do');
+    });
+
+    it('should include user message extraction logic', () => {
+      const result = hookGenerator.generateMacOSHook();
+      const command = result.hooks[0].command;
+
+      expect(command).toContain('TYPE=$(echo "$line" | jq -r \'.type // empty\')');
+      expect(command).toContain('if [ "$TYPE" = "user" ]; then');
+      expect(command).toContain('ROLE=$(echo "$line" | jq -r \'.message.role // empty\')');
+      expect(command).toContain('CONTENT=$(echo "$line" | jq -r \'.message.content // empty\')');
+    });
+
+    it('should include macOS-specific notification command', () => {
+      const result = hookGenerator.generateMacOSHook();
+      const command = result.hooks[0].command;
+
+      expect(command).toContain('afplay /System/Library/Sounds/Pop.aiff');
+      expect(command).toContain('osascript -e "display notification');
+      expect(command).toContain('with title \\"Claude Code\\"');
+    });
+
+    it('should include proper message truncation for macOS limits', () => {
+      const result = hookGenerator.generateMacOSHook();
+      const command = result.hooks[0].command;
+
+      expect(command).toContain('${USER_MSG:0:256}');
+      expect(command).toContain('${LATEST_MSG:0:1000}');
+    });
+
+    it('should include quote escaping for AppleScript', () => {
+      const result = hookGenerator.generateMacOSHook();
+      const command = result.hooks[0].command;
+
+      expect(command).toContain('ESCAPED_TITLE=$(echo "$NOTIFICATION_TITLE" | sed \'s/"/\\\\"/g\')');
+      expect(command).toContain('ESCAPED_BODY=$(echo "$NOTIFICATION_BODY" | sed \'s/"/\\\\"/g\')');
+    });
+
+    it('should include conditional notification sending', () => {
+      const result = hookGenerator.generateMacOSHook();
+      const command = result.hooks[0].command;
+
+      expect(command).toContain('if [ -n "$LATEST_MSG" ]; then');
+    });
+
+    it('should handle custom title with quotes properly', () => {
+      const titleWithQuotes = 'Title with "quotes"';
+
+      const result = hookGenerator.generateMacOSHook(titleWithQuotes);
+      const command = result.hooks[0].command;
+
+      expect(command).toContain('NOTIFICATION_TITLE="Title with \\"quotes\\""');
+    });
+
+    it('should run sound and notification in background', () => {
+      const result = hookGenerator.generateMacOSHook();
+      const command = result.hooks[0].command;
+
+      expect(command).toContain('afplay /System/Library/Sounds/Pop.aiff &');
+      expect(command).toContain('osascript -e "display notification');
+      expect(command).toContain('" &');
     });
   });
 
@@ -246,7 +358,7 @@ describe('HookGeneratorImpl', () => {
       } catch (err) {
         expect(err).toBeInstanceOf(CCNotifyError);
         expect((err as CCNotifyError).type).toBe(ErrorType.FILE_PERMISSION_ERROR);
-        expect((err as CCNotifyError).message).toContain('Failed to create ntfy script');
+        expect((err as CCNotifyError).message).toContain('Failed to create script directory');
       }
     });
 

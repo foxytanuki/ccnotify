@@ -51,6 +51,14 @@ export interface NtfyCommandArgs {
 }
 
 /**
+ * macOS command arguments
+ */
+export interface MacOSCommandArgs {
+  title?: string;
+  options: CommandOptions;
+}
+
+/**
  * Error types for the application
  */
 export enum ErrorType {
