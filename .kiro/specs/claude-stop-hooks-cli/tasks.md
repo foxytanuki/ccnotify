@@ -117,7 +117,7 @@
   - Write unit tests for macOS hook generation
   - _Requirements: 7.2, 7.3, 7.4, 7.5, 7.6_
 
-- [ ] 17. Create macOS command implementation
+- [x] 17. Create macOS command implementation
   - Implement macos command handler using commander.js
   - Add optional title parameter handling
   - Integrate configuration file creation/updating logic

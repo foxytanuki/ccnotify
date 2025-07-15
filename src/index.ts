@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
-import { registerDiscordCommand, registerNtfyCommand } from './commands/index.js';
+import { registerDiscordCommand, registerNtfyCommand, registerMacOSCommand } from './commands/index.js';
 import { errorHandler } from './services/error-handler.js';
 import { ErrorSeverity, ErrorType } from './types/index.js';
 
@@ -23,7 +23,7 @@ function createProgram(): Command {
   // Set up basic program info
   program
     .name('ccnotify')
-    .description('CLI tool for creating Claude Code Stop Hooks with Discord and ntfy notifications')
+    .description('CLI tool for creating Claude Code Stop Hooks with Discord, ntfy, and macOS notifications')
     .version(packageJson.version, '-v, --version', 'display version number');
 
   // Configure help
@@ -39,8 +39,11 @@ function createProgram(): Command {
 Examples:
   $ ccnotify discord https://discord.com/api/webhooks/123/abc
   $ ccnotify ntfy my-topic
+  $ ccnotify macos
+  $ ccnotify macos "Custom Title"
   $ ccnotify discord https://discord.com/api/webhooks/123/abc --global
   $ ccnotify ntfy my-topic --global
+  $ ccnotify macos --global
 
 For more information, visit: https://github.com/your-repo/ccnotify
 `,
@@ -58,6 +61,9 @@ function registerCommands(program: Command): void {
 
   // Register ntfy command
   registerNtfyCommand(program);
+
+  // Register macOS command
+  registerMacOSCommand(program);
 }
 
 /**
