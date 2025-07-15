@@ -76,3 +76,18 @@ A CLI tool called `ccnotify` that simplifies the creation of Stop Hooks for Clau
 3. WHEN webhook URLs are malformed THEN the system SHALL validate and provide feedback
 4. THE system SHALL exit with appropriate error codes for different failure scenarios
 5. ALL error messages SHALL be clear and actionable for the user
+
+### Requirement 7
+
+**User Story:** As a developer, I want to create rich macOS notification Stop Hooks, so that I can receive detailed notifications with Claude Code message content directly on my Mac.
+
+#### Acceptance Criteria
+
+1. WHEN the user runs `ccnotify macos [title]` THEN the system SHALL create or update `.claude/settings.json` with a macOS notification hook
+2. THE macOS hook SHALL use the same transcript processing logic as ntfy and Discord commands to extract user and assistant messages
+3. THE notification SHALL display the user message as the title (or use provided title as fallback)
+4. THE notification SHALL display the assistant response as the notification body, truncated appropriately for macOS notifications
+5. THE hook SHALL use `osascript` to display native macOS notifications
+6. THE hook SHALL play a system sound when displaying the notification
+7. IF `.claude/settings.json` already exists THEN the system SHALL preserve existing configurations while adding the new macOS hook
+8. THE system SHALL support both local and global configuration modes with the `--global` flag

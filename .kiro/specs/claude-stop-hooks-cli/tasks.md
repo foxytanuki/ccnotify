@@ -109,9 +109,25 @@
   - Set up package.json with proper bin configuration
   - _Requirements: Tool distribution and usability_
 
-- [ ] 16. Create executable and distribution setup
+- [ ] 16. Implement macOS hook generation
+  - Create macOS notification hook configuration generation
+  - Implement osascript command template with sound integration
+  - Reuse existing transcript processing logic for message extraction
+  - Add title and body formatting with macOS character limits
+  - Write unit tests for macOS hook generation
+  - _Requirements: 7.2, 7.3, 7.4, 7.5, 7.6_
+
+- [ ] 17. Create macOS command implementation
+  - Implement macos command handler using commander.js
+  - Add optional title parameter handling
+  - Integrate configuration file creation/updating logic
+  - Handle global vs local configuration modes
+  - Write unit tests for macOS command
+  - _Requirements: 7.1, 7.7, 7.8_
+
+- [ ] 18. Create executable and distribution setup
   - Configure CLI binary creation
   - Test executable generation and functionality
-  - Verify all commands work in built executable
+  - Verify all commands work in built executable including new macOS command
   - Create installation and usage documentation
   - _Requirements: Final tool deployment and usability_

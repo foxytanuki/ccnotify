@@ -14,6 +14,7 @@ src/
 ├── commands/          # Command implementations
 │   ├── discord.ts     # Discord webhook command
 │   ├── ntfy.ts        # ntfy notification command
+│   ├── macos.ts       # macOS notification command
 │   └── help.ts        # Help command
 ├── services/          # Core business logic
 │   ├── config.ts      # Configuration file management
@@ -35,6 +36,7 @@ src/
   - `ccnotify` (default help)
   - `ccnotify discord <webhook_url> [options]`
   - `ccnotify ntfy <topic_name> [options]`
+  - `ccnotify macos [title] [options]`
 - **Global Options**: `--global/-g` flag for global configuration
 
 ### Configuration Manager
@@ -52,6 +54,7 @@ interface ConfigManager {
 interface HookGenerator {
   generateDiscordHook(webhookUrl: string): StopHook;
   generateNtfyHook(topicName: string): StopHook;
+  generateMacOSHook(title?: string): StopHook;
   createNtfyScript(topicName: string, scriptPath: string): Promise<void>;
 }
 ```
@@ -105,6 +108,11 @@ interface NtfyCommandArgs {
   topicName: string;
   options: CommandOptions;
 }
+
+interface MacOSCommandArgs {
+  title?: string;
+  options: CommandOptions;
+}
 ```
 
 ## Error Handling
@@ -155,6 +163,14 @@ class CCNotifyError extends Error {
 - **Topic Configuration**: Embed topic name in script with fallback to environment variable
 - **Transcript Processing**: Extract latest user and assistant messages from transcript
 - **Message Truncation**: Limit message length for ntfy compatibility
+
+### macOS Hook Generation
+- **osascript Integration**: Use AppleScript via osascript for native macOS notifications
+- **Sound Integration**: Play system sound (Pop.aiff) when displaying notifications
+- **Message Reuse**: Leverage existing transcript processing logic from ntfy/Discord commands
+- **Title Handling**: Use user message as title, with optional custom title fallback
+- **Body Formatting**: Display assistant response as notification body with appropriate truncation
+- **Character Limits**: Respect macOS notification character limits for title and body
 
 ### Configuration Management
 - **Safe JSON Operations**: Parse, validate, and merge configurations
