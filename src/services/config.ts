@@ -115,7 +115,7 @@ export class ConfigManagerImpl implements ConfigManager {
 
         // Merge hooks, preserving existing hook types
         Object.keys(updates.hooks).forEach((hookType) => {
-          if (hookType === 'Stop' && updates.hooks?.Stop) {
+          if (hookType === 'Stop' && updates.hooks?.Stop && merged.hooks) {
             // Merge Stop hooks array
             if (!merged.hooks.Stop) {
               merged.hooks.Stop = [];
@@ -124,19 +124,19 @@ export class ConfigManagerImpl implements ConfigManager {
             // Add new Stop hooks, avoiding duplicates based on matcher
             updates.hooks.Stop.forEach((newHook) => {
               const existingIndex =
-                merged.hooks.Stop?.findIndex(
+                merged.hooks?.Stop?.findIndex(
                   (existingHook) => existingHook.matcher === newHook.matcher,
                 ) ?? -1;
 
-              if (existingIndex >= 0 && merged.hooks.Stop) {
+              if (existingIndex >= 0 && merged.hooks?.Stop) {
                 // Replace existing hook with same matcher
                 merged.hooks.Stop[existingIndex] = newHook;
-              } else if (merged.hooks.Stop) {
+              } else if (merged.hooks?.Stop) {
                 // Add new hook
                 merged.hooks.Stop.push(newHook);
               }
             });
-          } else {
+          } else if (merged.hooks && updates.hooks) {
             // For other hook types, directly assign
             merged.hooks[hookType] = updates.hooks[hookType];
           }
@@ -165,20 +165,24 @@ export class ConfigManagerImpl implements ConfigManager {
       throw new CCNotifyError(ErrorType.JSON_PARSE_ERROR, 'Configuration must be an object');
     }
 
+    const configObj = config as Record<string, unknown>;
+
     // Validate hooks structure if present
-    if (config.hooks !== undefined) {
-      if (typeof config.hooks !== 'object' || config.hooks === null) {
+    if (configObj.hooks !== undefined) {
+      if (typeof configObj.hooks !== 'object' || configObj.hooks === null) {
         throw new CCNotifyError(ErrorType.JSON_PARSE_ERROR, 'hooks property must be an object');
       }
 
+      const hooks = configObj.hooks as Record<string, unknown>;
+
       // Validate Stop hooks if present
-      if (config.hooks.Stop !== undefined) {
-        if (!Array.isArray(config.hooks.Stop)) {
+      if (hooks.Stop !== undefined) {
+        if (!Array.isArray(hooks.Stop)) {
           throw new CCNotifyError(ErrorType.JSON_PARSE_ERROR, 'hooks.Stop must be an array');
         }
 
         // Validate each Stop hook
-        config.hooks.Stop.forEach((hook: unknown, index: number) => {
+        hooks.Stop.forEach((hook: unknown, index: number) => {
           if (typeof hook !== 'object' || hook === null) {
             throw new CCNotifyError(
               ErrorType.JSON_PARSE_ERROR,
@@ -186,14 +190,16 @@ export class ConfigManagerImpl implements ConfigManager {
             );
           }
 
-          if (typeof hook.matcher !== 'string') {
+          const hookObj = hook as Record<string, unknown>;
+
+          if (typeof hookObj.matcher !== 'string') {
             throw new CCNotifyError(
               ErrorType.JSON_PARSE_ERROR,
               `Stop hook at index ${index} must have a string matcher`,
             );
           }
 
-          if (!Array.isArray(hook.hooks)) {
+          if (!Array.isArray(hookObj.hooks)) {
             throw new CCNotifyError(
               ErrorType.JSON_PARSE_ERROR,
               `Stop hook at index ${index} must have a hooks array`,
@@ -201,7 +207,7 @@ export class ConfigManagerImpl implements ConfigManager {
           }
 
           // Validate individual hooks
-          hook.hooks.forEach((individualHook: unknown, hookIndex: number) => {
+          hookObj.hooks.forEach((individualHook: unknown, hookIndex: number) => {
             if (typeof individualHook !== 'object' || individualHook === null) {
               throw new CCNotifyError(
                 ErrorType.JSON_PARSE_ERROR,
@@ -209,14 +215,16 @@ export class ConfigManagerImpl implements ConfigManager {
               );
             }
 
-            if (individualHook.type !== 'command') {
+            const individualHookObj = individualHook as Record<string, unknown>;
+
+            if (individualHookObj.type !== 'command') {
               throw new CCNotifyError(
                 ErrorType.JSON_PARSE_ERROR,
                 `Hook at index ${index}.${hookIndex} must have type 'command'`,
               );
             }
 
-            if (typeof individualHook.command !== 'string') {
+            if (typeof individualHookObj.command !== 'string') {
               throw new CCNotifyError(
                 ErrorType.JSON_PARSE_ERROR,
                 `Hook at index ${index}.${hookIndex} must have a string command`,
