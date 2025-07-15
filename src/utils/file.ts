@@ -1,5 +1,5 @@
 import { promises as fs } from 'node:fs';
-import { dirname } from 'node:path';
+import { dirname, basename, join } from 'node:path';
 import { errorHandler } from '../services/error-handler.js';
 import { CCNotifyError, ErrorSeverity, ErrorType } from '../types/index.js';
 
@@ -86,7 +86,7 @@ export class FileSystemServiceImpl implements FileSystemService {
   }
 
   /**
-   * Create a backup of a file with timestamp
+   * Create a backup of a file with timestamp, keeping only the latest backup
    */
   async createBackup(filePath: string): Promise<string> {
     try {
@@ -108,6 +108,9 @@ export class FileSystemServiceImpl implements FileSystemService {
       // Copy the file to backup location
       await this.copyFile(filePath, backupPath);
 
+      // Clean up old backup files after creating the new one
+      await this.cleanupOldBackups(filePath);
+
       return backupPath;
     } catch (error) {
       if (error instanceof CCNotifyError) {
@@ -120,6 +123,44 @@ export class FileSystemServiceImpl implements FileSystemService {
         ErrorSeverity.HIGH,
         { filePath, operation: 'createBackup' },
       );
+    }
+  }
+
+  /**
+   * Clean up old backup files, keeping only the most recent one
+   */
+  private async cleanupOldBackups(filePath: string): Promise<void> {
+    try {
+      const dir = dirname(filePath);
+      const fileName = basename(filePath);
+      const backupPattern = `${fileName}.backup.`;
+
+      // Read directory contents
+      const files = await fs.readdir(dir);
+      
+      // Find all backup files for this specific file
+      const backupFiles = files
+        .filter(file => file.startsWith(backupPattern))
+        .map(file => ({
+          name: file,
+          path: join(dir, file),
+          // Extract timestamp from filename for sorting
+          timestamp: file.replace(backupPattern, '')
+        }))
+        .sort((a, b) => b.timestamp.localeCompare(a.timestamp)); // Sort by timestamp descending
+
+      // Remove all but the most recent backup (keep index 0, remove 1+)
+      for (let i = 1; i < backupFiles.length; i++) {
+        try {
+          await fs.unlink(backupFiles[i].path);
+        } catch (error) {
+          // Log but don't throw - cleanup is best effort
+          console.warn(`Failed to remove old backup file ${backupFiles[i].path}:`, error);
+        }
+      }
+    } catch (error) {
+      // Log but don't throw - cleanup is best effort
+      console.warn(`Failed to cleanup old backups for ${filePath}:`, error);
     }
   }
 }
