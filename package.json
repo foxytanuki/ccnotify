@@ -47,7 +47,7 @@
     "hooks"
   ],
   "author": "foxytanuki",
-  "license": "ISC",
+  "license": "MIT",
   "packageManager": "pnpm@10.10.0",
   "devDependencies": {
     "@biomejs/biome": "^2.1.1",
