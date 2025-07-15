@@ -1,5 +1,5 @@
 import { promises as fs } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
 import { CCNotifyError, ErrorType } from '../types/index.js';
 
 /**
@@ -68,7 +68,7 @@ export class FileSystemServiceImpl implements FileSystemService {
       // Ensure the directory exists
       const dir = dirname(path);
       await this.ensureDirectory(dir);
-      
+
       // Write the file
       await fs.writeFile(path, content, 'utf-8');
     } catch (error) {
@@ -88,7 +88,7 @@ export class FileSystemServiceImpl implements FileSystemService {
       // Ensure destination directory exists
       const dir = dirname(destination);
       await this.ensureDirectory(dir);
-      
+
       // Copy the file
       await fs.copyFile(source, destination);
     } catch (error) {
@@ -116,10 +116,10 @@ export class FileSystemServiceImpl implements FileSystemService {
       // Generate backup filename with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const backupPath = `${filePath}.backup.${timestamp}`;
-      
+
       // Copy the file to backup location
       await this.copyFile(filePath, backupPath);
-      
+
       return backupPath;
     } catch (error) {
       if (error instanceof CCNotifyError) {
@@ -186,18 +186,18 @@ export const fileUtils = {
    */
   async safeWriteJsonFile(path: string, data: any): Promise<void> {
     let backupPath: string | null = null;
-    
+
     try {
       // Create backup if file exists
       if (await fileSystemService.fileExists(path)) {
         backupPath = await fileSystemService.createBackup(path);
       }
-      
+
       // Write the new content
       await fileUtils.writeJsonFile(path, data);
     } catch (error) {
       // If we created a backup and writing failed, try to restore it
-      if (backupPath && await fileSystemService.fileExists(backupPath)) {
+      if (backupPath && (await fileSystemService.fileExists(backupPath))) {
         try {
           await fileSystemService.copyFile(backupPath, path);
         } catch (restoreError) {

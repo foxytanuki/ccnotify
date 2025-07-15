@@ -1,13 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  ClaudeConfig,
-  StopHook,
-  Hook,
-  CommandOptions,
-  DiscordCommandArgs,
-  NtfyCommandArgs,
-  ErrorType,
   CCNotifyError,
+  type ClaudeConfig,
+  type CommandOptions,
+  type DiscordCommandArgs,
+  ErrorType,
+  type Hook,
+  type NtfyCommandArgs,
+  type StopHook,
 } from '../../src/types';
 
 describe('TypeScript Types', () => {
