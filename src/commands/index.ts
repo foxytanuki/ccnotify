@@ -1,3 +1,9 @@
-// Command implementations
-export { handleNtfyCommand, registerNtfyCommand } from './ntfy.js';
-export { handleDiscordCommand, registerDiscordCommand } from './discord.js';
+/**
+ * Command exports for ccnotify CLI
+ */
+
+export { registerDiscordCommand } from './discord.js';
+export { registerNtfyCommand } from './ntfy.js';
+
+// Re-export types that commands might need
+export type { DiscordCommandArgs, NtfyCommandArgs, CommandOptions } from '../types/index.js';

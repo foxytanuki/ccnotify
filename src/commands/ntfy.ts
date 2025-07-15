@@ -1,4 +1,4 @@
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
 import type { Command } from 'commander';
 import { configManager } from '../services/config.js';
 import { hookGenerator } from '../services/hooks.js';
@@ -92,28 +92,15 @@ export async function handleNtfyCommand(args: NtfyCommandArgs): Promise<void> {
     // Save updated configuration
     await configManager.saveConfig(configPath, updatedConfig);
 
-    // Create ntfy.sh script in the same directory as settings.json
-    const scriptPath = join(configDir, 'ntfy.sh');
-    
-    await errorHandler.logDebug('Creating ntfy script', { scriptPath });
-    
-    try {
-      await hookGenerator.createNtfyScript(sanitizedTopicName, scriptPath);
-    } catch (error) {
-      throw errorHandler.wrapFileSystemError(error, 'create ntfy script', scriptPath);
-    }
-
     // Success message
     const configType = args.options.global ? 'global' : 'local';
     console.log(`✅ ntfy Stop Hook created successfully!`);
     console.log(`📁 Configuration: ${configPath} (${configType})`);
-    console.log(`📜 Script: ${scriptPath}`);
     console.log(`📢 Topic: ${sanitizedTopicName}`);
 
     await errorHandler.logInfo('ntfy Stop Hook created successfully', {
       configPath,
       configType,
-      scriptPath,
       topicName: sanitizedTopicName,
     });
   } catch (error) {

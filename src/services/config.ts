@@ -116,7 +116,7 @@ export class ConfigManagerImpl implements ConfigManager {
     if (isGlobal) {
       return join(homedir(), '.claude', 'settings.json');
     }
-    return join(process.cwd(), '.claude', 'settings.json');
+    return join(process.cwd(), '.claude', 'settings.local.json');
   }
 
   /**

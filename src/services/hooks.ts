@@ -36,8 +36,8 @@ export class HookGeneratorImpl implements HookGenerator {
   /**
    * Generate ntfy Stop Hook configuration
    */
-  generateNtfyHook(_topicName: string): StopHook {
-    const ntfyCommand = this.createNtfyCommand();
+  generateNtfyHook(topicName: string): StopHook {
+    const ntfyCommand = this.createNtfyCommand(topicName);
 
     return {
       matcher: 'ntfy-notification',
@@ -56,7 +56,7 @@ export class HookGeneratorImpl implements HookGenerator {
   async createNtfyScript(topicName: string, scriptPath: string): Promise<void> {
     try {
       await errorHandler.logDebug('Creating ntfy script', { topicName, scriptPath });
-      
+
       // Ensure the directory exists
       const scriptDir = dirname(scriptPath);
       try {
@@ -83,9 +83,9 @@ export class HookGeneratorImpl implements HookGenerator {
           await errorHandler.logDebug('Script made executable');
         } catch (error) {
           // Log warning but don't fail - script can still work without execute permissions
-          await errorHandler.logWarning('Failed to make script executable', { 
-            scriptPath, 
-            error: (error as Error).message 
+          await errorHandler.logWarning('Failed to make script executable', {
+            scriptPath,
+            error: (error as Error).message
           });
         }
       }
@@ -95,7 +95,7 @@ export class HookGeneratorImpl implements HookGenerator {
       if (error instanceof CCNotifyError) {
         throw error;
       }
-      
+
       throw errorHandler.createError(
         ErrorType.SCRIPT_CREATION_ERROR,
         `Failed to create ntfy script at ${scriptPath}`,
@@ -110,16 +110,18 @@ export class HookGeneratorImpl implements HookGenerator {
    * Create Discord webhook command with transcript processing
    */
   private createDiscordCommand(webhookUrl: string): string {
-    // Create a complex command that processes the transcript and formats for Discord
-    const command = `
+    // Create a command that processes the transcript and formats for Discord using portable shell syntax
+    const command = `#!/bin/bash
 # Process transcript and send to Discord
 TRANSCRIPT=$(jq -r .transcript_path)
 
 # Get latest assistant message
 LATEST_MSG=$(tail -1 "$TRANSCRIPT" | jq -r '.message.content[0].text // empty')
 
-# Get latest user message
+# Get latest user message using a temporary file for portability
 USER_MSG=""
+TEMP_FILE=$(mktemp)
+tac "$TRANSCRIPT" > "$TEMP_FILE"
 while IFS= read -r line; do
   TYPE=$(echo "$line" | jq -r '.type // empty')
   if [ "$TYPE" = "user" ]; then
@@ -132,7 +134,8 @@ while IFS= read -r line; do
       fi
     fi
   fi
-done < <(tac "$TRANSCRIPT")
+done < "$TEMP_FILE"
+rm -f "$TEMP_FILE"
 
 # Format message for Discord
 if [ -n "$LATEST_MSG" ]; then
@@ -165,10 +168,49 @@ fi`.trim();
   }
 
   /**
-   * Create ntfy command that calls the generated script
+   * Create ntfy command with embedded script content
    */
-  private createNtfyCommand(): string {
-    return 'bash "$(dirname "$0")/ntfy.sh"';
+  private createNtfyCommand(topicName: string): string {
+    const command = `#!/bin/bash
+# Process transcript and send to ntfy
+TRANSCRIPT=$(jq -r .transcript_path)
+
+# Default topic name with unique identifier
+DEFAULT_TOPIC_NAME="${topicName}"
+
+# Configuration (use environment variable if set, otherwise use default)
+TOPIC_NAME="\${NTFY_TOPIC:-$DEFAULT_TOPIC_NAME}"
+
+# Get latest assistant message
+LATEST_MSG=$(tail -1 "$TRANSCRIPT" | jq -r '.message.content[0].text // empty')
+
+# Get latest user message using a temporary file for portability
+USER_MSG=""
+TEMP_FILE=$(mktemp)
+tac "$TRANSCRIPT" > "$TEMP_FILE"
+while IFS= read -r line; do
+  TYPE=$(echo "$line" | jq -r '.type // empty')
+  if [ "$TYPE" = "user" ]; then
+    ROLE=$(echo "$line" | jq -r '.message.role // empty')
+    if [ "$ROLE" = "user" ]; then
+      CONTENT=$(echo "$line" | jq -r '.message.content // empty')
+      # Only use content if it's a string and doesn't start with [
+      if [ -n "$CONTENT" ] && [ "\${CONTENT:0:1}" != "[" ]; then
+        USER_MSG="$CONTENT"
+        break
+      fi
+    fi
+  fi
+done < "$TEMP_FILE"
+rm -f "$TEMP_FILE"
+
+# Send message only if not empty
+if [ -n "$LATEST_MSG" ]; then
+  echo "$LATEST_MSG" | sed 's/^/ /' | head -c 500 | \\
+  curl -H "Title: \${USER_MSG:0:100}" -d @- "ntfy.sh/\${TOPIC_NAME}"
+fi`.trim();
+
+    return command;
   }
 
   /**
@@ -189,9 +231,10 @@ TRANSCRIPT=$(jq -r .transcript_path)
 # Get latest assistant message
 LATEST_MSG=$(tail -1 "$TRANSCRIPT" | jq -r '.message.content[0].text // empty')
 
-# Get latest user message
+# Get latest user message using a temporary file for portability
 USER_MSG=""
-
+TEMP_FILE=$(mktemp)
+tac "$TRANSCRIPT" > "$TEMP_FILE"
 while IFS= read -r line; do
   TYPE=$(echo "$line" | jq -r '.type // empty')
   if [ "$TYPE" = "user" ]; then
@@ -205,7 +248,8 @@ while IFS= read -r line; do
       fi
     fi
   fi
-done < <(tac "$TRANSCRIPT")
+done < "$TEMP_FILE"
+rm -f "$TEMP_FILE"
 
 # Send message only if not empty
 if [ -n "$LATEST_MSG" ]; then

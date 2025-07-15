@@ -154,3 +154,6 @@ test-results.xml
 
 # Vitest
 .vitest/
+
+# Local Claude settings (keep personal configurations out of version control)
+.claude/settings.local.json
