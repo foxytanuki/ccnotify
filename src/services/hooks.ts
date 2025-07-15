@@ -79,10 +79,61 @@ export class HookGeneratorImpl implements HookGenerator {
   }
 
   /**
-   * Create Discord webhook command
+   * Create Discord webhook command with transcript processing
    */
   private createDiscordCommand(webhookUrl: string): string {
-    return `curl -H "Content-Type: application/json" -d '{"content": "Claude Code operation completed"}' "${webhookUrl}"`;
+    // Create a complex command that processes the transcript and formats for Discord
+    const command = `
+# Process transcript and send to Discord
+TRANSCRIPT=$(jq -r .transcript_path)
+
+# Get latest assistant message
+LATEST_MSG=$(tail -1 "$TRANSCRIPT" | jq -r '.message.content[0].text // empty')
+
+# Get latest user message
+USER_MSG=""
+while IFS= read -r line; do
+  TYPE=$(echo "$line" | jq -r '.type // empty')
+  if [ "$TYPE" = "user" ]; then
+    ROLE=$(echo "$line" | jq -r '.message.role // empty')
+    if [ "$ROLE" = "user" ]; then
+      CONTENT=$(echo "$line" | jq -r '.message.content // empty')
+      if [ -n "$CONTENT" ] && [ "\${CONTENT:0:1}" != "[" ]; then
+        USER_MSG="$CONTENT"
+        break
+      fi
+    fi
+  fi
+done < <(tac "$TRANSCRIPT")
+
+# Format message for Discord
+if [ -n "$LATEST_MSG" ]; then
+  # Truncate and format the assistant message
+  FORMATTED_MSG=$(echo "$LATEST_MSG" | head -c 1800 | sed 's/"/\\\\"/g')
+  
+  # Create Discord embed payload
+  DISCORD_PAYLOAD=$(cat <<EOF
+{
+  "embeds": [{
+    "title": "Claude Code Operation Completed",
+    "description": "\${USER_MSG:0:200}",
+    "color": 5814783,
+    "fields": [{
+      "name": "Assistant Response",
+      "value": "\${FORMATTED_MSG:0:1000}",
+      "inline": false
+    }],
+    "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+  }]
+}
+EOF
+)
+  
+  # Send to Discord webhook
+  curl -H "Content-Type: application/json" -d "$DISCORD_PAYLOAD" "${webhookUrl}"
+fi`.trim();
+
+    return command;
   }
 
   /**

@@ -40,7 +40,7 @@ describe('HookGeneratorImpl', () => {
         hooks: [
           {
             type: 'command',
-            command: `curl -H "Content-Type: application/json" -d '{"content": "Claude Code operation completed"}' "${webhookUrl}"`,
+            command: expect.stringContaining('TRANSCRIPT=$(jq -r .transcript_path)'),
           },
         ],
       });
@@ -52,6 +52,80 @@ describe('HookGeneratorImpl', () => {
       const result = hookGenerator.generateDiscordHook(webhookUrl);
 
       expect(result.hooks[0].command).toContain(webhookUrl);
+    });
+
+    it('should include transcript processing logic', () => {
+      const webhookUrl = 'https://discord.com/api/webhooks/123456789/abcdef123456';
+
+      const result = hookGenerator.generateDiscordHook(webhookUrl);
+      const command = result.hooks[0].command;
+
+      expect(command).toContain('TRANSCRIPT=$(jq -r .transcript_path)');
+      expect(command).toContain('LATEST_MSG=$(tail -1 "$TRANSCRIPT"');
+      expect(command).toContain('while IFS= read -r line; do');
+    });
+
+    it('should include Discord-specific message formatting', () => {
+      const webhookUrl = 'https://discord.com/api/webhooks/123456789/abcdef123456';
+
+      const result = hookGenerator.generateDiscordHook(webhookUrl);
+      const command = result.hooks[0].command;
+
+      expect(command).toContain('FORMATTED_MSG=$(echo "$LATEST_MSG" | head -c 1800');
+      expect(command).toContain('"title": "Claude Code Operation Completed"');
+      expect(command).toContain('"embeds": [{');
+      expect(command).toContain('"color": 5814783');
+    });
+
+    it('should include user message extraction logic', () => {
+      const webhookUrl = 'https://discord.com/api/webhooks/123456789/abcdef123456';
+
+      const result = hookGenerator.generateDiscordHook(webhookUrl);
+      const command = result.hooks[0].command;
+
+      expect(command).toContain('TYPE=$(echo "$line" | jq -r \'.type // empty\')');
+      expect(command).toContain('if [ "$TYPE" = "user" ]; then');
+      expect(command).toContain('ROLE=$(echo "$line" | jq -r \'.message.role // empty\')');
+      expect(command).toContain('CONTENT=$(echo "$line" | jq -r \'.message.content // empty\')');
+    });
+
+    it('should include proper JSON escaping for Discord payload', () => {
+      const webhookUrl = 'https://discord.com/api/webhooks/123456789/abcdef123456';
+
+      const result = hookGenerator.generateDiscordHook(webhookUrl);
+      const command = result.hooks[0].command;
+
+      expect(command).toContain('sed \'s/"/\\\\"/g\'');
+    });
+
+    it('should include timestamp in Discord embed', () => {
+      const webhookUrl = 'https://discord.com/api/webhooks/123456789/abcdef123456';
+
+      const result = hookGenerator.generateDiscordHook(webhookUrl);
+      const command = result.hooks[0].command;
+
+      expect(command).toContain('"timestamp": "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"');
+    });
+
+    it('should include message truncation for Discord limits', () => {
+      const webhookUrl = 'https://discord.com/api/webhooks/123456789/abcdef123456';
+
+      const result = hookGenerator.generateDiscordHook(webhookUrl);
+      const command = result.hooks[0].command;
+
+      expect(command).toContain('head -c 1800');
+      expect(command).toContain('${USER_MSG:0:200}');
+      expect(command).toContain('${FORMATTED_MSG:0:1000}');
+    });
+
+    it('should include conditional message sending', () => {
+      const webhookUrl = 'https://discord.com/api/webhooks/123456789/abcdef123456';
+
+      const result = hookGenerator.generateDiscordHook(webhookUrl);
+      const command = result.hooks[0].command;
+
+      expect(command).toContain('if [ -n "$LATEST_MSG" ]; then');
+      expect(command).toContain('curl -H "Content-Type: application/json"');
     });
   });
 

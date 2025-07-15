@@ -57,7 +57,7 @@
   - Write unit tests for ntfy command
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2, 4.3_
 
-- [ ] 9. Create Discord hook generation
+- [x] 9. Create Discord hook generation
   - Implement Discord webhook hook configuration generation
   - Create curl command template for Discord notifications
   - Add Discord-specific message formatting
