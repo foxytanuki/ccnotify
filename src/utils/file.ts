@@ -137,7 +137,7 @@ export class FileSystemServiceImpl implements FileSystemService {
 
       // Read directory contents
       const files = await fs.readdir(dir);
-      
+
       // Find all backup files for this specific file
       const backupFiles = files
         .filter(file => file.startsWith(backupPattern))
