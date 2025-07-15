@@ -1,5 +1,5 @@
-import { join, dirname } from 'node:path';
-import { CCNotifyError, ErrorType, type Hook, type StopHook } from '../types/index.js';
+import { dirname } from 'node:path';
+import { CCNotifyError, ErrorType, type StopHook } from '../types/index.js';
 import { fileSystemService } from '../utils/file.js';
 
 /**
@@ -20,7 +20,7 @@ export class HookGeneratorImpl implements HookGenerator {
    */
   generateDiscordHook(webhookUrl: string): StopHook {
     const discordCommand = this.createDiscordCommand(webhookUrl);
-    
+
     return {
       matcher: 'discord-notification',
       hooks: [
@@ -35,9 +35,9 @@ export class HookGeneratorImpl implements HookGenerator {
   /**
    * Generate ntfy Stop Hook configuration
    */
-  generateNtfyHook(topicName: string): StopHook {
+  generateNtfyHook(_topicName: string): StopHook {
     const ntfyCommand = this.createNtfyCommand();
-    
+
     return {
       matcher: 'ntfy-notification',
       hooks: [

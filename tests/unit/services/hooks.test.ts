@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HookGeneratorImpl } from '../../../src/services/hooks.js';
-import { fileSystemService } from '../../../src/utils/file.js';
 import { CCNotifyError, ErrorType } from '../../../src/types/index.js';
+import { fileSystemService } from '../../../src/utils/file.js';
 
 // Mock the file system service
 vi.mock('../../../src/utils/file.js', () => ({
@@ -33,9 +32,9 @@ describe('HookGeneratorImpl', () => {
   describe('generateDiscordHook', () => {
     it('should generate Discord hook configuration with correct structure', () => {
       const webhookUrl = 'https://discord.com/api/webhooks/123456789/abcdef123456';
-      
+
       const result = hookGenerator.generateDiscordHook(webhookUrl);
-      
+
       expect(result).toEqual({
         matcher: 'discord-notification',
         hooks: [
@@ -49,9 +48,9 @@ describe('HookGeneratorImpl', () => {
 
     it('should include webhook URL in the command', () => {
       const webhookUrl = 'https://discord.com/api/webhooks/987654321/fedcba654321';
-      
+
       const result = hookGenerator.generateDiscordHook(webhookUrl);
-      
+
       expect(result.hooks[0].command).toContain(webhookUrl);
     });
   });
@@ -59,9 +58,9 @@ describe('HookGeneratorImpl', () => {
   describe('generateNtfyHook', () => {
     it('should generate ntfy hook configuration with correct structure', () => {
       const topicName = 'test-topic';
-      
+
       const result = hookGenerator.generateNtfyHook(topicName);
-      
+
       expect(result).toEqual({
         matcher: 'ntfy-notification',
         hooks: [
@@ -75,9 +74,9 @@ describe('HookGeneratorImpl', () => {
 
     it('should use relative path to ntfy.sh script', () => {
       const topicName = 'another-topic';
-      
+
       const result = hookGenerator.generateNtfyHook(topicName);
-      
+
       expect(result.hooks[0].command).toBe('bash "$(dirname "$0")/ntfy.sh"');
     });
   });
@@ -91,22 +90,22 @@ describe('HookGeneratorImpl', () => {
     it('should create ntfy script with correct topic name', async () => {
       const topicName = 'my-test-topic';
       const scriptPath = '/path/to/ntfy.sh';
-      
+
       await hookGenerator.createNtfyScript(topicName, scriptPath);
-      
+
       expect(mockFileSystemService.ensureDirectory).toHaveBeenCalledWith('/path/to');
       expect(mockFileSystemService.writeFile).toHaveBeenCalledWith(
         scriptPath,
-        expect.stringContaining(`DEFAULT_TOPIC_NAME="${topicName}"`)
+        expect.stringContaining(`DEFAULT_TOPIC_NAME="${topicName}"`),
       );
     });
 
     it('should create script with proper bash shebang', async () => {
       const topicName = 'test-topic';
       const scriptPath = '/path/to/ntfy.sh';
-      
+
       await hookGenerator.createNtfyScript(topicName, scriptPath);
-      
+
       const [, scriptContent] = mockFileSystemService.writeFile.mock.calls[0];
       expect(scriptContent).toMatch(/^#!\/bin\/bash/);
     });
@@ -114,9 +113,9 @@ describe('HookGeneratorImpl', () => {
     it('should include environment variable fallback logic', async () => {
       const topicName = 'env-test-topic';
       const scriptPath = '/path/to/ntfy.sh';
-      
+
       await hookGenerator.createNtfyScript(topicName, scriptPath);
-      
+
       const [, scriptContent] = mockFileSystemService.writeFile.mock.calls[0];
       expect(scriptContent).toContain('TOPIC_NAME="${NTFY_TOPIC:-$DEFAULT_TOPIC_NAME}"');
     });
@@ -124,9 +123,9 @@ describe('HookGeneratorImpl', () => {
     it('should include transcript processing logic', async () => {
       const topicName = 'transcript-topic';
       const scriptPath = '/path/to/ntfy.sh';
-      
+
       await hookGenerator.createNtfyScript(topicName, scriptPath);
-      
+
       const [, scriptContent] = mockFileSystemService.writeFile.mock.calls[0];
       expect(scriptContent).toContain('TRANSCRIPT=$(jq -r .transcript_path)');
       expect(scriptContent).toContain('LATEST_MSG=$(tail -1 "$TRANSCRIPT"');
@@ -136,9 +135,9 @@ describe('HookGeneratorImpl', () => {
     it('should include message extraction and formatting', async () => {
       const topicName = 'format-topic';
       const scriptPath = '/path/to/ntfy.sh';
-      
+
       await hookGenerator.createNtfyScript(topicName, scriptPath);
-      
+
       const [, scriptContent] = mockFileSystemService.writeFile.mock.calls[0];
       expect(scriptContent).toContain('head -c 500');
       expect(scriptContent).toContain('curl -H "Title: ${USER_MSG:0:100}"');
@@ -148,9 +147,9 @@ describe('HookGeneratorImpl', () => {
     it('should include user message extraction logic', async () => {
       const topicName = 'user-msg-topic';
       const scriptPath = '/path/to/ntfy.sh';
-      
+
       await hookGenerator.createNtfyScript(topicName, scriptPath);
-      
+
       const [, scriptContent] = mockFileSystemService.writeFile.mock.calls[0];
       expect(scriptContent).toContain('TYPE=$(echo "$line" | jq -r \'.type // empty\')');
       expect(scriptContent).toContain('if [ "$TYPE" = "user" ]; then');
@@ -161,13 +160,13 @@ describe('HookGeneratorImpl', () => {
       const topicName = 'error-topic';
       const scriptPath = '/invalid/path/ntfy.sh';
       const error = new Error('Permission denied');
-      
+
       mockFileSystemService.ensureDirectory.mockRejectedValue(error);
-      
+
       await expect(hookGenerator.createNtfyScript(topicName, scriptPath)).rejects.toThrow(
-        CCNotifyError
+        CCNotifyError,
       );
-      
+
       try {
         await hookGenerator.createNtfyScript(topicName, scriptPath);
       } catch (err) {
@@ -181,46 +180,46 @@ describe('HookGeneratorImpl', () => {
       const topicName = 'write-error-topic';
       const scriptPath = '/path/to/ntfy.sh';
       const error = new Error('Disk full');
-      
+
       mockFileSystemService.ensureDirectory.mockResolvedValue(undefined);
       mockFileSystemService.writeFile.mockRejectedValue(error);
-      
+
       await expect(hookGenerator.createNtfyScript(topicName, scriptPath)).rejects.toThrow(
-        CCNotifyError
+        CCNotifyError,
       );
     });
 
     it('should make script executable on Unix-like systems', async () => {
       const originalPlatform = process.platform;
       Object.defineProperty(process, 'platform', { value: 'linux' });
-      
+
       const { chmod } = await import('node:fs/promises');
       const mockChmod = vi.mocked(chmod);
-      
+
       const topicName = 'executable-topic';
       const scriptPath = '/path/to/ntfy.sh';
-      
+
       await hookGenerator.createNtfyScript(topicName, scriptPath);
-      
+
       expect(mockChmod).toHaveBeenCalledWith(scriptPath, 0o755);
-      
+
       Object.defineProperty(process, 'platform', { value: originalPlatform });
     });
 
     it('should not attempt chmod on Windows', async () => {
       const originalPlatform = process.platform;
       Object.defineProperty(process, 'platform', { value: 'win32' });
-      
+
       const topicName = 'windows-topic';
       const scriptPath = 'C:\\path\\to\\ntfy.sh';
-      
+
       await hookGenerator.createNtfyScript(topicName, scriptPath);
-      
+
       // chmod should not be called on Windows
       const { chmod } = await import('node:fs/promises');
       const mockChmod = vi.mocked(chmod);
       expect(mockChmod).not.toHaveBeenCalled();
-      
+
       Object.defineProperty(process, 'platform', { value: originalPlatform });
     });
   });
@@ -229,9 +228,9 @@ describe('HookGeneratorImpl', () => {
     it('should generate script with proper topic name embedding', async () => {
       const topicName = 'embedded-topic-123';
       const scriptPath = '/test/ntfy.sh';
-      
+
       await hookGenerator.createNtfyScript(topicName, scriptPath);
-      
+
       const [, scriptContent] = mockFileSystemService.writeFile.mock.calls[0];
       expect(scriptContent).toContain(`DEFAULT_TOPIC_NAME="${topicName}"`);
     });
@@ -239,23 +238,23 @@ describe('HookGeneratorImpl', () => {
     it('should include proper JSON parsing for transcript', async () => {
       const topicName = 'json-topic';
       const scriptPath = '/test/ntfy.sh';
-      
+
       await hookGenerator.createNtfyScript(topicName, scriptPath);
-      
+
       const [, scriptContent] = mockFileSystemService.writeFile.mock.calls[0];
       expect(scriptContent).toContain('jq -r .transcript_path');
-      expect(scriptContent).toContain('jq -r \'.message.content[0].text // empty\'');
-      expect(scriptContent).toContain('jq -r \'.type // empty\'');
-      expect(scriptContent).toContain('jq -r \'.message.role // empty\'');
-      expect(scriptContent).toContain('jq -r \'.message.content // empty\'');
+      expect(scriptContent).toContain("jq -r '.message.content[0].text // empty'");
+      expect(scriptContent).toContain("jq -r '.type // empty'");
+      expect(scriptContent).toContain("jq -r '.message.role // empty'");
+      expect(scriptContent).toContain("jq -r '.message.content // empty'");
     });
 
     it('should include proper message filtering logic', async () => {
       const topicName = 'filter-topic';
       const scriptPath = '/test/ntfy.sh';
-      
+
       await hookGenerator.createNtfyScript(topicName, scriptPath);
-      
+
       const [, scriptContent] = mockFileSystemService.writeFile.mock.calls[0];
       expect(scriptContent).toContain('if [ -n "$CONTENT" ] && [ "${CONTENT:0:1}" != "[" ]; then');
       expect(scriptContent).toContain('if [ -n "$LATEST_MSG" ]; then');
@@ -264,13 +263,13 @@ describe('HookGeneratorImpl', () => {
     it('should include proper message truncation and formatting', async () => {
       const topicName = 'truncate-topic';
       const scriptPath = '/test/ntfy.sh';
-      
+
       await hookGenerator.createNtfyScript(topicName, scriptPath);
-      
+
       const [, scriptContent] = mockFileSystemService.writeFile.mock.calls[0];
       expect(scriptContent).toContain('head -c 500');
       expect(scriptContent).toContain('${USER_MSG:0:100}');
-      expect(scriptContent).toContain('sed \'s/^/ /\'');
+      expect(scriptContent).toContain("sed 's/^/ /'");
     });
   });
 });

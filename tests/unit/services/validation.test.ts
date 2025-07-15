@@ -1,10 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  validateDiscordWebhookUrl,
-  validateNtfyTopicName,
   sanitizeInput,
   validateAndSanitizeDiscordUrl,
   validateAndSanitizeNtfyTopic,
+  validateDiscordWebhookUrl,
+  validateNtfyTopicName,
 } from '../../../src/services/validation.js';
 import { CCNotifyError, ErrorType } from '../../../src/types/index.js';
 

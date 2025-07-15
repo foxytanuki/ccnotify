@@ -1,5 +1,5 @@
 import { homedir } from 'node:os';
-import { join, resolve, dirname } from 'node:path';
+import { join, resolve } from 'node:path';
 import { CCNotifyError, ErrorType } from '../types/index.js';
 import { fileSystemService } from './file.js';
 
@@ -80,11 +80,11 @@ export class PathResolverImpl implements PathResolver {
     try {
       // Resolve the path to handle relative paths and symlinks
       const resolvedPath = resolve(path);
-      
+
       // Check if the directory exists
       if (await fileSystemService.fileExists(resolvedPath)) {
         // If it exists, check if it's actually a directory
-        const stats = await import('node:fs').then(fs => fs.promises.stat(resolvedPath));
+        const stats = await import('node:fs').then((fs) => fs.promises.stat(resolvedPath));
         if (!stats.isDirectory()) {
           return false;
         }
@@ -92,13 +92,13 @@ export class PathResolverImpl implements PathResolver {
 
       // Try to ensure the directory exists (this will create it if needed)
       await fileSystemService.ensureDirectory(resolvedPath);
-      
+
       // Test write permissions by creating a temporary file
       const testFile = join(resolvedPath, '.ccnotify-test-write');
       try {
         await fileSystemService.writeFile(testFile, 'test');
         // Clean up the test file
-        await import('node:fs').then(fs => fs.promises.unlink(testFile));
+        await import('node:fs').then((fs) => fs.promises.unlink(testFile));
         return true;
       } catch {
         return false;
@@ -113,7 +113,7 @@ export class PathResolverImpl implements PathResolver {
    */
   async ensureConfigDirectory(isGlobal: boolean): Promise<string> {
     const configDir = this.getConfigDirectory(isGlobal);
-    
+
     try {
       // Validate the directory path
       const isValid = await this.validateDirectoryPath(configDir);
@@ -126,7 +126,7 @@ export class PathResolverImpl implements PathResolver {
 
       // Ensure the directory exists
       await fileSystemService.ensureDirectory(configDir);
-      
+
       return configDir;
     } catch (error) {
       if (error instanceof CCNotifyError) {
@@ -172,14 +172,14 @@ export const pathUtils = {
   async isValidProjectDirectory(path?: string): Promise<boolean> {
     const checkPath = path || process.cwd();
     const indicators = ['package.json', '.git', 'tsconfig.json', 'pyproject.toml', 'Cargo.toml'];
-    
+
     for (const indicator of indicators) {
       const indicatorPath = join(checkPath, indicator);
       if (await fileSystemService.fileExists(indicatorPath)) {
         return true;
       }
     }
-    
+
     return false;
   },
 
@@ -188,9 +188,7 @@ export const pathUtils = {
    */
   getRelativePath(targetPath: string): string {
     const cwd = process.cwd();
-    const relativePath = targetPath.startsWith(cwd) 
-      ? targetPath.slice(cwd.length + 1) 
-      : targetPath;
+    const relativePath = targetPath.startsWith(cwd) ? targetPath.slice(cwd.length + 1) : targetPath;
     return relativePath || '.';
   },
 };

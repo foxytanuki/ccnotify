@@ -49,7 +49,7 @@
   - Write unit tests for ntfy hook generation
   - _Requirements: 3.1, 3.2, 3.5, 3.6_
 
-- [ ] 8. Create ntfy command implementation
+- [x] 8. Create ntfy command implementation
   - Implement ntfy command handler using commander.js
   - Integrate topic name validation
   - Add configuration file and script creation logic
