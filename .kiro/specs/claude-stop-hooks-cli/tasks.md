@@ -64,7 +64,7 @@
   - Write unit tests for Discord hook generation
   - _Requirements: 2.1, 2.2, 2.5_
 
-- [ ] 10. Create Discord command implementation
+- [x] 10. Create Discord command implementation
   - Implement discord command handler using commander.js
   - Integrate webhook URL validation
   - Add configuration file creation/updating logic
@@ -72,7 +72,7 @@
   - Write unit tests for Discord command
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 4.1, 4.2_
 
-- [ ] 11. Implement CLI entry point and help system
+- [x] 11. Implement CLI entry point and help system
   - Create main CLI application using commander.js
   - Set up command registration and option parsing
   - Implement help command and default help display
