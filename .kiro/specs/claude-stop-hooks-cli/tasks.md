@@ -34,7 +34,7 @@
   - Write unit tests for path resolution
   - _Requirements: 2.2, 3.2, 4.2, 4.3_
 
-- [ ] 6. Implement input validation services
+- [x] 6. Implement input validation services
   - Create Discord webhook URL validation
   - Add ntfy topic name validation
   - Implement general input sanitization
