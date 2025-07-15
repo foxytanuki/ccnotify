@@ -1,10 +1,10 @@
 import { dirname } from 'node:path';
 import type { Command } from 'commander';
 import { configManager } from '../services/config.js';
+import { errorHandler } from '../services/error-handler.js';
 import { hookGenerator } from '../services/hooks.js';
 import { validateAndSanitizeDiscordUrl } from '../services/validation.js';
-import { errorHandler } from '../services/error-handler.js';
-import { CCNotifyError, ErrorType, type DiscordCommandArgs } from '../types/index.js';
+import { CCNotifyError, type DiscordCommandArgs, ErrorType } from '../types/index.js';
 import { fileSystemService } from '../utils/file.js';
 
 /**
@@ -43,18 +43,18 @@ export function registerDiscordCommand(program: Command): void {
 export async function handleDiscordCommand(args: DiscordCommandArgs): Promise<void> {
   try {
     await errorHandler.logDebug('Validating Discord webhook URL');
-    
+
     // Validate and sanitize webhook URL
     const sanitizedWebhookUrl = validateAndSanitizeDiscordUrl(args.webhookUrl);
 
     await errorHandler.logDebug('Getting configuration path', { global: args.options.global });
-    
+
     // Get configuration path
     const configPath = configManager.getConfigPath(args.options.global ?? false);
     const configDir = dirname(configPath);
 
     await errorHandler.logDebug('Ensuring configuration directory exists', { configDir });
-    
+
     // Ensure configuration directory exists with enhanced error handling
     try {
       await fileSystemService.ensureDirectory(configDir);
@@ -63,7 +63,7 @@ export async function handleDiscordCommand(args: DiscordCommandArgs): Promise<vo
     }
 
     await errorHandler.logDebug('Loading existing configuration', { configPath });
-    
+
     // Load existing configuration
     const existingConfig = await configManager.loadConfig(configPath);
 
@@ -74,12 +74,12 @@ export async function handleDiscordCommand(args: DiscordCommandArgs): Promise<vo
     }
 
     await errorHandler.logDebug('Generating Discord hook');
-    
+
     // Generate Discord hook
     const discordHook = hookGenerator.generateDiscordHook(sanitizedWebhookUrl);
 
     await errorHandler.logDebug('Merging configuration');
-    
+
     // Merge with existing configuration
     const updatedConfig = configManager.mergeConfig(existingConfig, {
       hooks: {
@@ -88,7 +88,7 @@ export async function handleDiscordCommand(args: DiscordCommandArgs): Promise<vo
     });
 
     await errorHandler.logDebug('Saving updated configuration');
-    
+
     // Save updated configuration
     await configManager.saveConfig(configPath, updatedConfig);
 
@@ -106,7 +106,7 @@ export async function handleDiscordCommand(args: DiscordCommandArgs): Promise<vo
     if (error instanceof CCNotifyError) {
       throw error;
     }
-    
+
     // Wrap unknown errors with context
     throw errorHandler.createError(
       ErrorType.COMMAND_ERROR,
@@ -121,4 +121,3 @@ export async function handleDiscordCommand(args: DiscordCommandArgs): Promise<vo
     );
   }
 }
-

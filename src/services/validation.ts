@@ -1,4 +1,4 @@
-import { CCNotifyError, ErrorType, ErrorSeverity } from '../types/index.js';
+import { CCNotifyError, ErrorSeverity, ErrorType } from '../types/index.js';
 import { errorHandler } from './error-handler.js';
 
 /**
@@ -25,7 +25,7 @@ export function validateDiscordWebhookUrl(url: string): void {
       'Invalid Discord webhook URL format. Expected format: https://discord.com/api/webhooks/{id}/{token}',
       undefined,
       ErrorSeverity.MEDIUM,
-      { 
+      {
         url: url.replace(/\/[\w-]+$/, '/***'), // Hide token in logs
         validation: 'format_check',
         pattern: 'discord_webhook_url',
@@ -58,7 +58,7 @@ export function validateNtfyTopicName(topicName: string): void {
       'Invalid ntfy topic name. Must be 1-64 characters long and contain only letters, numbers, hyphens, and underscores',
       undefined,
       ErrorSeverity.MEDIUM,
-      { 
+      {
         topicName,
         validation: 'format_check',
         pattern: 'ntfy_topic_name',
@@ -79,7 +79,7 @@ export function validateNtfyTopicName(topicName: string): void {
       'ntfy topic name cannot start or end with hyphens or underscores',
       undefined,
       ErrorSeverity.MEDIUM,
-      { 
+      {
         topicName,
         validation: 'boundary_check',
         startsWithInvalid: topicName.startsWith('-') || topicName.startsWith('_'),

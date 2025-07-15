@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-import { Command } from 'commander';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Command } from 'commander';
 import { registerDiscordCommand, registerNtfyCommand } from './commands/index.js';
 import { errorHandler } from './services/error-handler.js';
-import { ErrorType, ErrorSeverity } from './types/index.js';
+import { ErrorSeverity, ErrorType } from './types/index.js';
 
 // Get package.json for version info
 const __filename = fileURLToPath(import.meta.url);
@@ -33,7 +33,9 @@ function createProgram(): Command {
   });
 
   // Add custom help text
-  program.addHelpText('after', `
+  program.addHelpText(
+    'after',
+    `
 Examples:
   $ ccnotify discord https://discord.com/api/webhooks/123/abc
   $ ccnotify ntfy my-topic
@@ -41,7 +43,8 @@ Examples:
   $ ccnotify ntfy my-topic --global
 
 For more information, visit: https://github.com/your-repo/ccnotify
-`);
+`,
+  );
 
   return program;
 }
@@ -52,7 +55,7 @@ For more information, visit: https://github.com/your-repo/ccnotify
 function registerCommands(program: Command): void {
   // Register Discord command
   registerDiscordCommand(program);
-  
+
   // Register ntfy command
   registerNtfyCommand(program);
 }

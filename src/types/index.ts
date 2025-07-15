@@ -153,11 +153,11 @@ export class CCNotifyError extends Error {
   getUserFriendlyMessage(): string {
     const baseMessage = this.message;
     const suggestions = this.getSuggestions();
-    
+
     if (suggestions.length > 0) {
-      return `${baseMessage}\n\nSuggestions:\n${suggestions.map(s => `  • ${s}`).join('\n')}`;
+      return `${baseMessage}\n\nSuggestions:\n${suggestions.map((s) => `  • ${s}`).join('\n')}`;
     }
-    
+
     return baseMessage;
   }
 
@@ -213,11 +213,13 @@ export class CCNotifyError extends Error {
       exitCode: this.exitCode,
       timestamp: this.timestamp.toISOString(),
       stack: this.stack,
-      originalError: this.originalError ? {
-        name: this.originalError.name,
-        message: this.originalError.message,
-        stack: this.originalError.stack,
-      } : undefined,
+      originalError: this.originalError
+        ? {
+            name: this.originalError.name,
+            message: this.originalError.message,
+            stack: this.originalError.stack,
+          }
+        : undefined,
     };
   }
 }

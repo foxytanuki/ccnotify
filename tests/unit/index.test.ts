@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Command } from 'commander';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the command modules
 vi.mock('../../src/commands/index.js', () => ({
@@ -34,16 +34,18 @@ describe('CLI Entry Point', () => {
     });
 
     // Mock console methods
-    mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => { });
-    mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => { });
+    mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     // Mock package.json content
     const { readFileSync } = await import('node:fs');
-    vi.mocked(readFileSync).mockReturnValue(JSON.stringify({
-      name: 'ccnotify',
-      version: '1.0.0',
-      description: 'CLI tool for creating Claude Code Stop Hooks'
-    }));
+    vi.mocked(readFileSync).mockReturnValue(
+      JSON.stringify({
+        name: 'ccnotify',
+        version: '1.0.0',
+        description: 'CLI tool for creating Claude Code Stop Hooks',
+      }),
+    );
 
     // Mock path functions
     const { dirname, join } = await import('node:path');
@@ -66,11 +68,15 @@ describe('CLI Entry Point', () => {
       const program = new Command();
       program
         .name('ccnotify')
-        .description('CLI tool for creating Claude Code Stop Hooks with Discord and ntfy notifications')
+        .description(
+          'CLI tool for creating Claude Code Stop Hooks with Discord and ntfy notifications',
+        )
         .version('1.0.0');
 
       expect(program.name()).toBe('ccnotify');
-      expect(program.description()).toBe('CLI tool for creating Claude Code Stop Hooks with Discord and ntfy notifications');
+      expect(program.description()).toBe(
+        'CLI tool for creating Claude Code Stop Hooks with Discord and ntfy notifications',
+      );
     });
 
     it('should configure help with custom text', () => {
@@ -99,7 +105,9 @@ For more information, visit: https://github.com/your-repo/ccnotify
 
   describe('Command Registration', () => {
     it('should register Discord and ntfy commands', async () => {
-      const { registerDiscordCommand, registerNtfyCommand } = await import('../../src/commands/index.js');
+      const { registerDiscordCommand, registerNtfyCommand } = await import(
+        '../../src/commands/index.js'
+      );
 
       const program = new Command();
 

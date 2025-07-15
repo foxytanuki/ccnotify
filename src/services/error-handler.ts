@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { CCNotifyError, ErrorSeverity, ErrorType, ExitCode } from '../types/index.js';
 
 /**
@@ -178,7 +178,7 @@ export class ErrorHandler {
     context?: Record<string, any>,
   ): CCNotifyError {
     const error = new CCNotifyError(type, message, originalError, severity);
-    
+
     // Log the error creation for debugging
     if (this.config.debugLevel >= DebugLevel.DEBUG) {
       this.logDebug(`Creating error: ${type}`, { message, context });
@@ -192,7 +192,7 @@ export class ErrorHandler {
    */
   wrapFileSystemError(error: unknown, operation: string, path: string): CCNotifyError {
     const nodeError = error as NodeJS.ErrnoException;
-    
+
     let errorType = ErrorType.FILE_PERMISSION_ERROR;
     let message = `Failed to ${operation}: ${path}`;
     let severity = ErrorSeverity.MEDIUM;
@@ -240,7 +240,7 @@ export class ErrorHandler {
    */
   wrapJsonError(error: unknown, filePath: string): CCNotifyError {
     const jsonError = error as Error;
-    
+
     return this.createError(
       ErrorType.JSON_PARSE_ERROR,
       `Invalid JSON in configuration file: ${filePath}`,
@@ -255,7 +255,7 @@ export class ErrorHandler {
    */
   private displayError(error: CCNotifyError): void {
     const colors = this.config.colorOutput ? this.getColors() : this.getNoColors();
-    
+
     // Error header
     console.error(`${colors.red}❌ Error${colors.reset}: ${error.getUserFriendlyMessage()}`);
 
@@ -323,7 +323,7 @@ export class ErrorHandler {
   private logToConsole(entry: LogEntry): void {
     const colors = this.config.colorOutput ? this.getColors() : this.getNoColors();
     const timestamp = new Date(entry.timestamp).toLocaleTimeString();
-    
+
     let levelColor = colors.reset;
     let levelIcon = '';
 
@@ -351,7 +351,9 @@ export class ErrorHandler {
 
     // Show context in verbose mode
     if (this.config.debugLevel >= DebugLevel.VERBOSE && entry.context) {
-      console.error(`${colors.dim}Context: ${JSON.stringify(entry.context, null, 2)}${colors.reset}`);
+      console.error(
+        `${colors.dim}Context: ${JSON.stringify(entry.context, null, 2)}${colors.reset}`,
+      );
     }
   }
 
@@ -412,18 +414,20 @@ export class ErrorHandler {
    * Determine if stack traces should be shown
    */
   private shouldShowStackTrace(): boolean {
-    return process.env.CCNOTIFY_STACK_TRACE === 'true' || 
-           process.env.NODE_ENV === 'development' ||
-           this.getDebugLevelFromEnv() >= DebugLevel.DEBUG;
+    return (
+      process.env.CCNOTIFY_STACK_TRACE === 'true' ||
+      process.env.NODE_ENV === 'development' ||
+      this.getDebugLevelFromEnv() >= DebugLevel.DEBUG
+    );
   }
 
   /**
    * Determine if colors should be used
    */
   private shouldUseColors(): boolean {
-    return process.env.FORCE_COLOR !== '0' && 
-           process.env.NO_COLOR === undefined &&
-           process.stdout.isTTY;
+    return (
+      process.env.FORCE_COLOR !== '0' && process.env.NO_COLOR === undefined && process.stdout.isTTY
+    );
   }
 
   /**
@@ -478,9 +482,9 @@ export class ErrorHandler {
       await fs.mkdir(logDir, { recursive: true });
 
       // Write all buffered logs
-      const logLines = this.logBuffer.map(entry => JSON.stringify(entry)).join('\n') + '\n';
+      const logLines = this.logBuffer.map((entry) => JSON.stringify(entry)).join('\n') + '\n';
       await fs.appendFile(this.config.logFilePath, logLines, 'utf8');
-      
+
       this.clearLogBuffer();
     } catch (error) {
       console.error('Failed to flush logs to file:', error);

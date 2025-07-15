@@ -1,5 +1,5 @@
 import { dirname } from 'node:path';
-import { CCNotifyError, ErrorType, ErrorSeverity, type StopHook } from '../types/index.js';
+import { CCNotifyError, ErrorSeverity, ErrorType, type StopHook } from '../types/index.js';
 import { fileSystemService } from '../utils/file.js';
 import { errorHandler } from './error-handler.js';
 
@@ -85,7 +85,7 @@ export class HookGeneratorImpl implements HookGenerator {
           // Log warning but don't fail - script can still work without execute permissions
           await errorHandler.logWarning('Failed to make script executable', {
             scriptPath,
-            error: (error as Error).message
+            error: (error as Error).message,
           });
         }
       }

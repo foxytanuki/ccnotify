@@ -1,19 +1,20 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { errorHandler } from '../../../src/services/error-handler.js';
 import {
-  validateDiscordWebhookUrl,
-  validateNtfyTopicName,
   sanitizeInput,
   validateAndSanitizeDiscordUrl,
   validateAndSanitizeNtfyTopic,
+  validateDiscordWebhookUrl,
+  validateNtfyTopicName,
 } from '../../../src/services/validation.js';
-import { CCNotifyError, ErrorType, ErrorSeverity } from '../../../src/types/index.js';
-import { errorHandler } from '../../../src/services/error-handler.js';
+import { CCNotifyError, ErrorSeverity, ErrorType } from '../../../src/types/index.js';
 
 // Mock the error handler
 vi.mock('../../../src/services/error-handler.js', () => ({
   errorHandler: {
-    createError: vi.fn((type, message, originalError, severity, context) => 
-      new CCNotifyError(type, message, originalError, severity)
+    createError: vi.fn(
+      (type, message, originalError, severity, context) =>
+        new CCNotifyError(type, message, originalError, severity),
     ),
   },
 }));
@@ -49,7 +50,7 @@ describe('Validation Service', () => {
       invalidUrls.forEach((url) => {
         expect(() => validateDiscordWebhookUrl(url)).toThrow(CCNotifyError);
         expect(() => validateDiscordWebhookUrl(url)).toThrow(ErrorType.INVALID_WEBHOOK_URL);
-        
+
         // Verify enhanced error handling was called
         expect(errorHandler.createError).toHaveBeenCalledWith(
           ErrorType.INVALID_WEBHOOK_URL,
@@ -70,8 +71,10 @@ describe('Validation Service', () => {
 
       invalidInputs.forEach((input) => {
         expect(() => validateDiscordWebhookUrl(input as any)).toThrow(CCNotifyError);
-        expect(() => validateDiscordWebhookUrl(input as any)).toThrow(ErrorType.INVALID_WEBHOOK_URL);
-        
+        expect(() => validateDiscordWebhookUrl(input as any)).toThrow(
+          ErrorType.INVALID_WEBHOOK_URL,
+        );
+
         // Verify enhanced error handling was called
         expect(errorHandler.createError).toHaveBeenCalledWith(
           ErrorType.INVALID_WEBHOOK_URL,
@@ -88,9 +91,9 @@ describe('Validation Service', () => {
 
     it('should hide webhook tokens in error context', () => {
       const urlWithToken = 'https://discord.com/api/webhooks/123456789/secret-token-here';
-      
+
       expect(() => validateDiscordWebhookUrl('invalid-url')).toThrow();
-      
+
       // The error context should not contain the full URL with token
       expect(errorHandler.createError).toHaveBeenCalledWith(
         expect.any(String),
@@ -135,7 +138,7 @@ describe('Validation Service', () => {
       invalidTopics.forEach(({ topic, reason }) => {
         expect(() => validateNtfyTopicName(topic)).toThrow(CCNotifyError);
         expect(() => validateNtfyTopicName(topic)).toThrow(ErrorType.INVALID_TOPIC_NAME);
-        
+
         // Verify enhanced error handling was called with context
         expect(errorHandler.createError).toHaveBeenCalledWith(
           ErrorType.INVALID_TOPIC_NAME,
@@ -162,7 +165,7 @@ describe('Validation Service', () => {
 
       boundaryInvalidTopics.forEach((topic) => {
         expect(() => validateNtfyTopicName(topic)).toThrow(CCNotifyError);
-        
+
         // Verify boundary check error context
         expect(errorHandler.createError).toHaveBeenCalledWith(
           ErrorType.INVALID_TOPIC_NAME,
@@ -185,7 +188,7 @@ describe('Validation Service', () => {
       invalidInputs.forEach((input) => {
         expect(() => validateNtfyTopicName(input as any)).toThrow(CCNotifyError);
         expect(() => validateNtfyTopicName(input as any)).toThrow(ErrorType.INVALID_TOPIC_NAME);
-        
+
         // Verify enhanced error handling was called
         expect(errorHandler.createError).toHaveBeenCalledWith(
           ErrorType.INVALID_TOPIC_NAME,
@@ -287,9 +290,9 @@ describe('Validation Service', () => {
   describe('Error Context and Logging', () => {
     it('should provide detailed context for validation errors', () => {
       const testUrl = 'https://example.com/not-discord';
-      
+
       expect(() => validateDiscordWebhookUrl(testUrl)).toThrow();
-      
+
       expect(errorHandler.createError).toHaveBeenCalledWith(
         ErrorType.INVALID_WEBHOOK_URL,
         expect.any(String),
@@ -304,9 +307,9 @@ describe('Validation Service', () => {
 
     it('should provide detailed context for topic validation errors', () => {
       const testTopic = 'invalid@topic';
-      
+
       expect(() => validateNtfyTopicName(testTopic)).toThrow();
-      
+
       expect(errorHandler.createError).toHaveBeenCalledWith(
         ErrorType.INVALID_TOPIC_NAME,
         expect.any(String),

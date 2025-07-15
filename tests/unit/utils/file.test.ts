@@ -1,8 +1,8 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { promises as fs } from 'node:fs';
-import { fileSystemService, fileUtils } from '../../../src/utils/file.js';
-import { CCNotifyError, ErrorType, ErrorSeverity } from '../../../src/types/index.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../src/services/error-handler.js';
+import { CCNotifyError, ErrorSeverity, ErrorType } from '../../../src/types/index.js';
+import { fileSystemService, fileUtils } from '../../../src/utils/file.js';
 
 // Mock fs operations
 vi.mock('node:fs', () => ({
@@ -18,14 +18,25 @@ vi.mock('node:fs', () => ({
 // Mock error handler
 vi.mock('../../../src/services/error-handler.js', () => ({
   errorHandler: {
-    wrapFileSystemError: vi.fn((error, operation, path) => 
-      new CCNotifyError(ErrorType.FILE_PERMISSION_ERROR, `Failed to ${operation}: ${path}`, error)
+    wrapFileSystemError: vi.fn(
+      (error, operation, path) =>
+        new CCNotifyError(
+          ErrorType.FILE_PERMISSION_ERROR,
+          `Failed to ${operation}: ${path}`,
+          error,
+        ),
     ),
-    createError: vi.fn((type, message, originalError, severity, context) => 
-      new CCNotifyError(type, message, originalError, severity)
+    createError: vi.fn(
+      (type, message, originalError, severity, context) =>
+        new CCNotifyError(type, message, originalError, severity),
     ),
-    wrapJsonError: vi.fn((error, filePath) => 
-      new CCNotifyError(ErrorType.JSON_PARSE_ERROR, `Invalid JSON in configuration file: ${filePath}`, error)
+    wrapJsonError: vi.fn(
+      (error, filePath) =>
+        new CCNotifyError(
+          ErrorType.JSON_PARSE_ERROR,
+          `Invalid JSON in configuration file: ${filePath}`,
+          error,
+        ),
     ),
   },
 }));
@@ -49,12 +60,12 @@ describe('File System Service', () => {
       (fs.mkdir as any).mockRejectedValue(error);
 
       await expect(fileSystemService.ensureDirectory('/test/path')).rejects.toThrow(CCNotifyError);
-      
+
       // Verify enhanced error handling was called
       expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
         error,
         'create directory',
-        '/test/path'
+        '/test/path',
       );
     });
 
@@ -67,7 +78,7 @@ describe('File System Service', () => {
       expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
         error,
         'create directory',
-        '/test/path'
+        '/test/path',
       );
     });
   });
@@ -117,7 +128,7 @@ describe('File System Service', () => {
       expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
         error,
         'read file',
-        '/test/file.txt'
+        '/test/file.txt',
       );
     });
 
@@ -130,7 +141,7 @@ describe('File System Service', () => {
       expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
         error,
         'read file',
-        '/test/file.txt'
+        '/test/file.txt',
       );
     });
   });
@@ -140,9 +151,7 @@ describe('File System Service', () => {
       (fs.mkdir as any).mockResolvedValue(undefined);
       (fs.writeFile as any).mockResolvedValue(undefined);
 
-      await expect(
-        fileSystemService.writeFile('/test/file.txt', 'content'),
-      ).resolves.not.toThrow();
+      await expect(fileSystemService.writeFile('/test/file.txt', 'content')).resolves.not.toThrow();
       expect(fs.writeFile).toHaveBeenCalledWith('/test/file.txt', 'content', 'utf-8');
     });
 
@@ -158,7 +167,7 @@ describe('File System Service', () => {
       expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
         error,
         'write file',
-        '/test/file.txt'
+        '/test/file.txt',
       );
     });
 
@@ -174,7 +183,7 @@ describe('File System Service', () => {
       expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
         error,
         'write file',
-        '/test/file.txt'
+        '/test/file.txt',
       );
     });
   });
@@ -184,9 +193,7 @@ describe('File System Service', () => {
       (fs.mkdir as any).mockResolvedValue(undefined);
       (fs.copyFile as any).mockResolvedValue(undefined);
 
-      await expect(
-        fileSystemService.copyFile('/source.txt', '/dest.txt'),
-      ).resolves.not.toThrow();
+      await expect(fileSystemService.copyFile('/source.txt', '/dest.txt')).resolves.not.toThrow();
       expect(fs.copyFile).toHaveBeenCalledWith('/source.txt', '/dest.txt');
     });
 
@@ -202,7 +209,7 @@ describe('File System Service', () => {
       expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
         error,
         'copy file from /source.txt',
-        '/dest.txt'
+        '/dest.txt',
       );
     });
   });
@@ -229,7 +236,7 @@ describe('File System Service', () => {
         expect.objectContaining({
           filePath: '/test/file.txt',
           operation: 'createBackup',
-        })
+        }),
       );
     });
 
@@ -249,7 +256,7 @@ describe('File System Service', () => {
         expect.objectContaining({
           filePath: '/test/file.txt',
           operation: 'createBackup',
-        })
+        }),
       );
     });
   });
@@ -276,7 +283,7 @@ describe('File Utils', () => {
       await expect(fileUtils.readJsonFile('/test/config.json')).rejects.toThrow(CCNotifyError);
       expect(errorHandler.wrapJsonError).toHaveBeenCalledWith(
         expect.any(SyntaxError),
-        '/test/config.json'
+        '/test/config.json',
       );
     });
 
@@ -289,14 +296,14 @@ describe('File Utils', () => {
       expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
         error,
         'read file',
-        '/test/config.json'
+        '/test/config.json',
       );
     });
 
     it('should handle other JSON errors with enhanced error handling', async () => {
       const jsonContent = '{"test": "value"}';
       (fs.readFile as any).mockResolvedValue(jsonContent);
-      
+
       // Mock JSON.parse to throw a different error
       const originalParse = JSON.parse;
       JSON.parse = vi.fn().mockImplementation(() => {
@@ -312,7 +319,7 @@ describe('File Utils', () => {
         expect.objectContaining({
           path: '/test/config.json',
           operation: 'readJsonFile',
-        })
+        }),
       );
 
       // Restore original JSON.parse
@@ -344,18 +351,20 @@ describe('File Utils', () => {
       expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
         error,
         'write file',
-        '/test/config.json'
+        '/test/config.json',
       );
     });
 
     it('should handle JSON stringify errors with enhanced error handling', async () => {
       (fs.mkdir as any).mockResolvedValue(undefined);
-      
+
       // Create circular reference to cause JSON.stringify to fail
       const circularData: any = { test: 'value' };
       circularData.circular = circularData;
 
-      await expect(fileUtils.writeJsonFile('/test/config.json', circularData)).rejects.toThrow(CCNotifyError);
+      await expect(fileUtils.writeJsonFile('/test/config.json', circularData)).rejects.toThrow(
+        CCNotifyError,
+      );
       expect(errorHandler.createError).toHaveBeenCalledWith(
         ErrorType.FILE_PERMISSION_ERROR,
         'Failed to write JSON file: /test/config.json',
@@ -364,7 +373,7 @@ describe('File Utils', () => {
         expect.objectContaining({
           path: '/test/config.json',
           operation: 'writeJsonFile',
-        })
+        }),
       );
     });
   });
@@ -406,7 +415,7 @@ describe('File Utils', () => {
         expect.stringContaining('Failed to create backup'),
         backupError,
         ErrorSeverity.HIGH,
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -421,7 +430,9 @@ describe('File Utils', () => {
       (fs.writeFile as any).mockRejectedValue(new Error('Write failed'));
 
       // Should still throw the original write error, not the restore error
-      await expect(fileUtils.safeWriteJsonFile('/test/config.json', {})).rejects.toThrow('Write failed');
+      await expect(fileUtils.safeWriteJsonFile('/test/config.json', {})).rejects.toThrow(
+        'Write failed',
+      );
     });
   });
 
@@ -447,7 +458,7 @@ describe('File Utils', () => {
         expect(errorHandler.wrapFileSystemError).toHaveBeenCalledWith(
           error,
           'read file',
-          '/test/file.txt'
+          '/test/file.txt',
         );
 
         vi.clearAllMocks();

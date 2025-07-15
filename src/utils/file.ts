@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import { dirname } from 'node:path';
-import { CCNotifyError, ErrorType, ErrorSeverity } from '../types/index.js';
 import { errorHandler } from '../services/error-handler.js';
+import { CCNotifyError, ErrorSeverity, ErrorType } from '../types/index.js';
 
 /**
  * File system service interface
@@ -144,12 +144,12 @@ export const fileUtils = {
       if (error instanceof CCNotifyError) {
         throw error;
       }
-      
+
       // Use enhanced JSON error wrapping
       if (error instanceof SyntaxError) {
         throw errorHandler.wrapJsonError(error, path);
       }
-      
+
       throw errorHandler.createError(
         ErrorType.JSON_PARSE_ERROR,
         `Failed to parse JSON file: ${path}`,

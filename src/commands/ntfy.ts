@@ -1,9 +1,9 @@
 import { dirname } from 'node:path';
 import type { Command } from 'commander';
 import { configManager } from '../services/config.js';
+import { errorHandler } from '../services/error-handler.js';
 import { hookGenerator } from '../services/hooks.js';
 import { validateAndSanitizeNtfyTopic } from '../services/validation.js';
-import { errorHandler } from '../services/error-handler.js';
 import { CCNotifyError, ErrorType, type NtfyCommandArgs } from '../types/index.js';
 import { fileSystemService } from '../utils/file.js';
 
@@ -43,18 +43,18 @@ export function registerNtfyCommand(program: Command): void {
 export async function handleNtfyCommand(args: NtfyCommandArgs): Promise<void> {
   try {
     await errorHandler.logDebug('Validating ntfy topic name');
-    
+
     // Validate and sanitize topic name
     const sanitizedTopicName = validateAndSanitizeNtfyTopic(args.topicName);
 
     await errorHandler.logDebug('Getting configuration path', { global: args.options.global });
-    
+
     // Get configuration path
     const configPath = configManager.getConfigPath(args.options.global ?? false);
     const configDir = dirname(configPath);
 
     await errorHandler.logDebug('Ensuring configuration directory exists', { configDir });
-    
+
     // Ensure configuration directory exists with enhanced error handling
     try {
       await fileSystemService.ensureDirectory(configDir);
@@ -63,7 +63,7 @@ export async function handleNtfyCommand(args: NtfyCommandArgs): Promise<void> {
     }
 
     await errorHandler.logDebug('Loading existing configuration', { configPath });
-    
+
     // Load existing configuration
     const existingConfig = await configManager.loadConfig(configPath);
 
@@ -74,12 +74,12 @@ export async function handleNtfyCommand(args: NtfyCommandArgs): Promise<void> {
     }
 
     await errorHandler.logDebug('Generating ntfy hook');
-    
+
     // Generate ntfy hook
     const ntfyHook = hookGenerator.generateNtfyHook(sanitizedTopicName);
 
     await errorHandler.logDebug('Merging configuration');
-    
+
     // Merge with existing configuration
     const updatedConfig = configManager.mergeConfig(existingConfig, {
       hooks: {
@@ -88,7 +88,7 @@ export async function handleNtfyCommand(args: NtfyCommandArgs): Promise<void> {
     });
 
     await errorHandler.logDebug('Saving updated configuration');
-    
+
     // Save updated configuration
     await configManager.saveConfig(configPath, updatedConfig);
 
@@ -107,7 +107,7 @@ export async function handleNtfyCommand(args: NtfyCommandArgs): Promise<void> {
     if (error instanceof CCNotifyError) {
       throw error;
     }
-    
+
     // Wrap unknown errors with context
     throw errorHandler.createError(
       ErrorType.COMMAND_ERROR,
@@ -122,5 +122,3 @@ export async function handleNtfyCommand(args: NtfyCommandArgs): Promise<void> {
     );
   }
 }
-
-

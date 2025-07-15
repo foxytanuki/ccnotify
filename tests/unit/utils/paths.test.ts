@@ -20,7 +20,7 @@ vi.mock('node:fs', async () => {
   return {
     ...actual,
     promises: {
-      ...actual.promises,
+      ...(actual as any).promises,
       stat: vi.fn(),
       unlink: vi.fn(),
     },

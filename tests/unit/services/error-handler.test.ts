@@ -1,21 +1,15 @@
-
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  ErrorHandler,
+  createError,
   DebugLevel,
+  ErrorHandler,
   errorHandler,
   handleError,
-  createError,
 } from '../../../src/services/error-handler.js';
-import {
-  CCNotifyError,
-  ErrorType,
-  ErrorSeverity,
-  ExitCode,
-} from '../../../src/types/index.js';
+import { CCNotifyError, ErrorSeverity, ErrorType, ExitCode } from '../../../src/types/index.js';
 
 // Mock fs operations
 vi.mock('node:fs', () => ({
@@ -26,7 +20,7 @@ vi.mock('node:fs', () => ({
 }));
 
 // Mock console methods
-const mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => { });
+const mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 const mockProcessExit = vi.spyOn(process, 'exit').mockImplementation(() => {
   throw new Error('process.exit called');
 });
@@ -66,10 +60,7 @@ describe('ErrorHandler', () => {
     });
 
     it('should generate user-friendly messages with suggestions', () => {
-      const error = new CCNotifyError(
-        ErrorType.INVALID_WEBHOOK_URL,
-        'Invalid webhook URL',
-      );
+      const error = new CCNotifyError(ErrorType.INVALID_WEBHOOK_URL, 'Invalid webhook URL');
 
       const friendlyMessage = error.getUserFriendlyMessage();
       expect(friendlyMessage).toContain('Invalid webhook URL');
@@ -278,15 +269,14 @@ describe('ErrorHandler', () => {
     it('should handle unknown errors by wrapping them', async () => {
       const unknownError = new Error('Unknown error');
 
-      await expect(testErrorHandler.handleUnknownError(unknownError)).rejects.toThrow('process.exit called');
+      await expect(testErrorHandler.handleUnknownError(unknownError)).rejects.toThrow(
+        'process.exit called',
+      );
       expect(mockProcessExit).toHaveBeenCalledWith(ExitCode.COMMAND_ERROR);
     });
 
     it('should display error with user-friendly formatting', async () => {
-      const error = new CCNotifyError(
-        ErrorType.INVALID_TOPIC_NAME,
-        'Invalid topic name',
-      );
+      const error = new CCNotifyError(ErrorType.INVALID_TOPIC_NAME, 'Invalid topic name');
 
       await expect(testErrorHandler.handleError(error)).rejects.toThrow('process.exit called');
 
@@ -307,9 +297,7 @@ describe('ErrorHandler', () => {
       expect(mockConsoleError).toHaveBeenCalledWith(
         expect.stringContaining('Error Type: FILE_PERMISSION_ERROR'),
       );
-      expect(mockConsoleError).toHaveBeenCalledWith(
-        expect.stringContaining('Severity: MEDIUM'),
-      );
+      expect(mockConsoleError).toHaveBeenCalledWith(expect.stringContaining('Severity: MEDIUM'));
     });
   });
 

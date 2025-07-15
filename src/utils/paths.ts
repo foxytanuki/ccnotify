@@ -1,8 +1,8 @@
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { CCNotifyError, ErrorType, ErrorSeverity } from '../types/index.js';
-import { fileSystemService } from './file.js';
 import { errorHandler } from '../services/error-handler.js';
+import { CCNotifyError, ErrorSeverity, ErrorType } from '../types/index.js';
+import { fileSystemService } from './file.js';
 
 /**
  * Path resolution service interface
