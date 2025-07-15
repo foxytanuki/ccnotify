@@ -17,12 +17,6 @@ A CLI tool for creating Claude Code Stop Hooks with Discord, ntfy, and macOS not
 
 ## Installation
 
-### From npm (Recommended)
-
-```bash
-npm install -g ccnotify
-```
-
 ### From Source
 
 ```bash
