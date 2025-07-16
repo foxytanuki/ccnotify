@@ -1,6 +1,6 @@
 {
   "name": "ccnotify",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "CLI tool for creating Claude Code Stop Hooks with Discord and ntfy notifications",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
