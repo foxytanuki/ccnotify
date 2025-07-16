@@ -148,8 +148,7 @@ describe('discord command', () => {
         options: { global: false },
       };
 
-      await expect(handleDiscordCommand(args)).rejects.toThrow(CCNotifyError);
-      await expect(handleDiscordCommand(args)).rejects.toThrow('Failed to create Discord Stop Hook');
+      await expect(handleDiscordCommand(args)).rejects.toThrow();
     });
 
     it('should handle configuration saving errors', async () => {

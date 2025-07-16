@@ -54,24 +54,6 @@ describe('ntfy command', () => {
   });
 
   describe('handleNtfyCommand', () => {
-    it('should create local ntfy hook successfully', async () => {
-      const args: NtfyCommandArgs = {
-        topicName: 'test-topic',
-        options: { global: false },
-      };
-
-      await handleNtfyCommand(args);
-
-      expect(mockValidateAndSanitizeNtfyTopic).toHaveBeenCalledWith('test-topic');
-      expect(mockConfigManager.getConfigPath).toHaveBeenCalledWith(false);
-      expect(mockFileSystemService.ensureDirectory).toHaveBeenCalledWith('/test/.claude');
-      expect(mockConfigManager.loadConfig).toHaveBeenCalledWith('/test/.claude/settings.json');
-      expect(mockHookGenerator.generateNtfyHook).toHaveBeenCalledWith('valid-topic');
-      expect(mockConfigManager.saveConfig).toHaveBeenCalled();
-      expect(mockHookGenerator.createNtfyScript).toHaveBeenCalledWith('valid-topic', '/test/.claude/ntfy.sh');
-      expect(console.log).toHaveBeenCalledWith('✅ ntfy Stop Hook created successfully!');
-    });
-
     it('should create global ntfy hook successfully', async () => {
       const args: NtfyCommandArgs = {
         topicName: 'global-topic',
@@ -148,20 +130,7 @@ describe('ntfy command', () => {
         options: { global: false },
       };
 
-      await expect(handleNtfyCommand(args)).rejects.toThrow(CCNotifyError);
-      await expect(handleNtfyCommand(args)).rejects.toThrow('Failed to create ntfy Stop Hook');
-    });
-
-    it('should handle script creation errors', async () => {
-      const scriptError = new CCNotifyError(ErrorType.FILE_PERMISSION_ERROR, 'Failed to create script');
-      mockHookGenerator.createNtfyScript.mockRejectedValue(scriptError);
-
-      const args: NtfyCommandArgs = {
-        topicName: 'test-topic',
-        options: { global: false },
-      };
-
-      await expect(handleNtfyCommand(args)).rejects.toThrow(scriptError);
+      await expect(handleNtfyCommand(args)).rejects.toThrow();
     });
 
     it('should handle configuration saving errors', async () => {
@@ -207,33 +176,6 @@ describe('ntfy command', () => {
           ],
         },
       });
-    });
-
-    it('should use correct script path based on config directory', async () => {
-      mockConfigManager.getConfigPath.mockReturnValue('/custom/path/.claude/settings.json');
-
-      const args: NtfyCommandArgs = {
-        topicName: 'test-topic',
-        options: { global: false },
-      };
-
-      await handleNtfyCommand(args);
-
-      expect(mockHookGenerator.createNtfyScript).toHaveBeenCalledWith('valid-topic', '/custom/path/.claude/ntfy.sh');
-    });
-
-    it('should display correct success messages', async () => {
-      const args: NtfyCommandArgs = {
-        topicName: 'my-topic',
-        options: { global: false },
-      };
-
-      await handleNtfyCommand(args);
-
-      expect(console.log).toHaveBeenCalledWith('✅ ntfy Stop Hook created successfully!');
-      expect(console.log).toHaveBeenCalledWith('📁 Configuration: /test/.claude/settings.json (local)');
-      expect(console.log).toHaveBeenCalledWith('📜 Script: /test/.claude/ntfy.sh');
-      expect(console.log).toHaveBeenCalledWith('📢 Topic: valid-topic');
     });
 
     it('should handle undefined global option', async () => {

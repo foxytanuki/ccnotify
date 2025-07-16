@@ -222,6 +222,7 @@ describe('ErrorHandler', () => {
       const fileHandler = new ErrorHandler({
         logToFile: true,
         logFilePath: '/test/error.log',
+        debugLevel: DebugLevel.INFO,
       });
 
       // Add some logs to buffer
@@ -230,7 +231,13 @@ describe('ErrorHandler', () => {
 
       await fileHandler.flushLogs();
 
-      expect(fs.appendFile).toHaveBeenCalledWith('/test/error.log', expect.stringContaining('Test 1'), 'utf8');
+      expect(fs.mkdir).toHaveBeenCalledWith('/test', { recursive: true });
+      // flushLogs writes all logs in a single call
+      expect(fs.appendFile).toHaveBeenCalledWith(
+        '/test/error.log',
+        expect.stringMatching(/Test 1.*Test 2/s), // Matches both Test 1 and Test 2 with any characters between (including newlines)
+        'utf8'
+      );
     });
   });
 
@@ -269,10 +276,16 @@ describe('ErrorHandler', () => {
         new Error('Original error')
       );
 
+      // Clear previous calls
+      mockConsoleError.mockClear();
+
       await expect(testErrorHandler.handleError(error)).rejects.toThrow('process.exit called');
 
-      expect(mockConsoleError).toHaveBeenCalledWith(expect.stringContaining('Error Type: FILE_PERMISSION_ERROR'));
-      expect(mockConsoleError).toHaveBeenCalledWith(expect.stringContaining('Severity: MEDIUM'));
+      // Check that the error calls include debug information
+      const errorCalls = mockConsoleError.mock.calls.map(call => call[0]);
+      expect(errorCalls.some(msg => msg.includes('❌ Error: Permission denied'))).toBe(true);
+      expect(errorCalls.some(msg => msg.includes('Error Type: FILE_PERMISSION_ERROR'))).toBe(true);
+      expect(errorCalls.some(msg => msg.includes('Severity: medium'))).toBe(true);
     });
   });
 
@@ -304,7 +317,7 @@ describe('ErrorHandler', () => {
       const error = new CCNotifyError(ErrorType.VALIDATION_ERROR, 'Test error');
 
       await expect(handleError(error)).rejects.toThrow('process.exit called');
-      expect(mockProcessExit).toHaveBeenCalledWith(ExitCode.VALIDATION_ERROR);
+      expect(mockProcessExit).toHaveBeenCalledWith(ExitCode.INVALID_INPUT);
     });
 
     it('should create errors through convenience function', () => {

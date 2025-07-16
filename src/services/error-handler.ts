@@ -357,6 +357,10 @@ export class ErrorHandler {
     if (!this.config.logFilePath) return;
 
     try {
+      // Ensure log directory exists
+      const logDir = join(this.config.logFilePath, '..');
+      await fs.mkdir(logDir, { recursive: true });
+
       const logLine = JSON.stringify(entry) + '\n';
       await fs.appendFile(this.config.logFilePath, logLine, 'utf8');
     } catch (error) {

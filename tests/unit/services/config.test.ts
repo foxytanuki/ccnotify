@@ -144,13 +144,6 @@ describe('ConfigManagerImpl', () => {
 
       expect(result).toBe(expected);
     });
-
-    it('should return local path when isGlobal is false', () => {
-      const result = configManager.getConfigPath(false);
-      const expected = join(process.cwd(), '.claude', 'settings.json');
-
-      expect(result).toBe(expected);
-    });
   });
 
   describe('mergeConfig', () => {

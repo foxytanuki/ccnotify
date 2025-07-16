@@ -23,19 +23,18 @@ vi.mock('node:url', () => ({
 }));
 
 describe('CLI Entry Point', () => {
-  let mockExit: any;
-  let mockConsoleError: any;
-  let mockConsoleLog: any;
+  let _mockConsoleError: any;
+  let _mockConsoleLog: any;
 
   beforeEach(async () => {
     // Mock process.exit
-    mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
+    vi.spyOn(process, 'exit').mockImplementation(() => {
       throw new Error('process.exit called');
     });
 
     // Mock console methods
-    mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
+    _mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    _mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     // Mock package.json content
     const { readFileSync } = await import('node:fs');
