@@ -21,19 +21,33 @@ A CLI tool for creating Claude Code Stop Hooks with Discord, ntfy, and macOS not
 
 ## Installation
 
-### Using npm
+### Using npx (Recommended)
+
+Always use the latest version without global installation:
+
+```bash
+npx ccnotify discord https://discord.com/api/webhooks/123/abc
+npx ccnotify ntfy my-topic
+npx ccnotify macos "Notification Title"
+```
+
+### Global Installation
+
+If you prefer to install globally:
+
+#### Using npm
 
 ```bash
 npm install -g ccnotify
 ```
 
-### Using yarn
+#### Using yarn
 
 ```bash
 yarn global add ccnotify
 ```
 
-### Using pnpm
+#### Using pnpm
 
 ```bash
 pnpm add -g ccnotify
@@ -50,6 +64,22 @@ pnpm link --global
 ```
 
 ## Usage
+
+### Quick Start with npx
+
+```bash
+# Discord notifications
+npx ccnotify discord https://discord.com/api/webhooks/123456789/your-webhook-token
+
+# ntfy notifications  
+npx ccnotify ntfy my-topic-name
+
+# macOS notifications
+npx ccnotify macos "Claude Code Completed"
+
+# Global configuration
+npx ccnotify discord https://discord.com/api/webhooks/123/abc --global
+```
 
 ### Basic Commands
 
