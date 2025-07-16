@@ -234,7 +234,7 @@ pnpm run dev -- discord https://example.com/webhook
 
 ## License
 
-ISC License - see LICENSE file for details.
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Support
 
