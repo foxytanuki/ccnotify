@@ -90,7 +90,7 @@ Examples:
   $ ccnotify discord https://discord.com/api/webhooks/123/abc --global
   $ ccnotify ntfy my-topic --global
 
-For more information, visit: https://github.com/your-repo/ccnotify
+For more information, visit: https://github.com/foxytanuki/ccnotify
 `;
 
       // Test that addHelpText can be called without error

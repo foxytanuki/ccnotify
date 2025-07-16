@@ -20,7 +20,7 @@ A CLI tool for creating Claude Code Stop Hooks with Discord, ntfy, and macOS not
 ### From Source
 
 ```bash
-git clone https://github.com/your-repo/ccnotify.git
+git clone https://github.com/foxytanuki/ccnotify.git
 cd ccnotify
 pnpm install
 pnpm run build
@@ -204,7 +204,7 @@ The tool automatically creates backups of existing configuration files before ma
 ### Building from Source
 
 ```bash
-git clone https://github.com/your-repo/ccnotify.git
+git clone https://github.com/foxytanuki/ccnotify.git
 cd ccnotify
 pnpm install
 pnpm run build
@@ -239,8 +239,8 @@ ISC License - see LICENSE file for details.
 ## Support
 
 For issues and questions:
-- GitHub Issues: https://github.com/your-repo/ccnotify/issues
-- Documentation: https://github.com/your-repo/ccnotify/wiki
+- GitHub Issues: https://github.com/foxytanuki/ccnotify/issues
+- Documentation: https://github.com/foxytanuki/ccnotify/wiki
 
 ## Changelog
 

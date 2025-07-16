@@ -45,7 +45,7 @@ Examples:
   $ ccnotify ntfy my-topic --global
   $ ccnotify macos --global
 
-For more information, visit: https://github.com/your-repo/ccnotify
+For more information, visit: https://github.com/foxytanuki/ccnotify
 `,
   );
 
