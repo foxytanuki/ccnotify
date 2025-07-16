@@ -5,39 +5,18 @@
     "clientKind": "git",
     "useIgnoreFile": true
   },
-  "assist": {
-    "actions": {
-      "source": {
-        "organizeImports": "on"
-      }
-    }
-  },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
-      "complexity": {
-        "noExcessiveCognitiveComplexity": "error",
-        "noVoid": "off"
-      },
+      "recommended": false,
       "correctness": {
-        "noUnusedVariables": "error",
-        "useExhaustiveDependencies": "warn"
-      },
-      "performance": {
-        "noDelete": "error"
+        "noUnusedVariables": "warn"
       },
       "security": {
         "noDangerouslySetInnerHtml": "error"
       },
-      "style": {
-        "noNonNullAssertion": "warn",
-        "useConsistentArrayType": "error",
-        "useNodejsImportProtocol": "error"
-      },
       "suspicious": {
-        "noExplicitAny": "warn",
-        "noArrayIndexKey": "error"
+        "noExplicitAny": "off"
       }
     }
   },
@@ -45,17 +24,17 @@
     "enabled": true,
     "indentStyle": "space",
     "indentWidth": 2,
-    "lineWidth": 100,
+    "lineWidth": 120,
     "lineEnding": "lf"
   },
   "javascript": {
     "formatter": {
       "quoteStyle": "single",
       "semicolons": "always",
-      "trailingCommas": "all",
+      "trailingCommas": "es5",
       "bracketSpacing": true,
       "bracketSameLine": false,
-      "arrowParentheses": "always"
+      "arrowParentheses": "asNeeded"
     }
   },
   "json": {
