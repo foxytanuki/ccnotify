@@ -1,0 +1,50 @@
+# Source files
+src/
+tests/
+
+# Configuration files
+.github/
+.vscode/
+.idea/
+biome.json
+tsconfig.json
+vitest.config.ts
+lefthook.yml
+.gitignore
+.npmignore
+pnpm-lock.yaml
+
+# Test files
+coverage/
+*.test.ts
+*.spec.ts
+__tests__/
+test-cli/
+
+# Development files
+.DS_Store
+.env
+.env.local
+*.log
+*.backup.*
+
+# Build artifacts
+.tsbuildinfo
+*.map
+
+# Documentation development
+docs/
+examples/
+
+# CI/CD
+.travis.yml
+.circleci/
+.gitlab-ci.yml
+
+# Editor directories
+*.swp
+*.swo
+*~
+
+# Local Claude settings
+.claude/

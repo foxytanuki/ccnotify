@@ -1,7 +1,7 @@
 {
   "name": "ccnotify",
   "version": "0.0.1",
-  "description": "CLI tool for creating Claude Code Stop Hooks with Discord and ntfy notifications",
+  "description": "CLI tool for creating Claude Code Stop Hooks with Discord, ntfy, and macOS notifications",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -40,14 +40,26 @@
   },
   "keywords": [
     "claude",
+    "claude-code",
     "cli",
     "notifications",
     "discord",
     "ntfy",
-    "hooks"
+    "macos",
+    "hooks",
+    "webhook",
+    "stop-hooks"
   ],
   "author": "foxytanuki",
   "license": "MIT",
+  "homepage": "https://github.com/foxytanuki/ccnotify#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/foxytanuki/ccnotify.git"
+  },
+  "bugs": {
+    "url": "https://github.com/foxytanuki/ccnotify/issues"
+  },
   "packageManager": "pnpm@10.10.0",
   "devDependencies": {
     "@biomejs/biome": "^2.1.1",
