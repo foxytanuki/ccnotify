@@ -1,5 +1,9 @@
 # ccnotify
 
+[![CI](https://github.com/foxytanuki/ccnotify/actions/workflows/ci.yml/badge.svg)](https://github.com/foxytanuki/ccnotify/actions/workflows/ci.yml)
+[![npm version](https://badge.fury.io/js/ccnotify.svg)](https://badge.fury.io/js/ccnotify)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A CLI tool for creating Claude Code Stop Hooks with Discord, ntfy, and macOS notifications.
 
 ## Overview
@@ -16,6 +20,24 @@ A CLI tool for creating Claude Code Stop Hooks with Discord, ntfy, and macOS not
 - **Cross-Platform**: Works on macOS, Linux, and Windows
 
 ## Installation
+
+### Using npm
+
+```bash
+npm install -g ccnotify
+```
+
+### Using yarn
+
+```bash
+yarn global add ccnotify
+```
+
+### Using pnpm
+
+```bash
+pnpm add -g ccnotify
+```
 
 ### From Source
 
