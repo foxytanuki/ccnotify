@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleMacOSCommand } from '../../../src/commands/macos.js';
 import { configManager } from '../../../src/services/config.js';
 import { hookGenerator } from '../../../src/services/hooks.js';
-import { CCNotifyError, type MacOSCommandArgs, ErrorType } from '../../../src/types/index.js';
+import { CCNotifyError, ErrorType, type MacOSCommandArgs } from '../../../src/types/index.js';
 import { fileSystemService } from '../../../src/utils/file.js';
 
 // Mock all dependencies
@@ -90,7 +90,7 @@ describe('macos command', () => {
       expect(mockConfigManager.getConfigPath).toHaveBeenCalledWith(true);
       expect(mockFileSystemService.ensureDirectory).toHaveBeenCalledWith('/home/user/.claude');
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Configuration: /home/user/.claude/settings.json (global)'),
+        expect.stringContaining('Configuration: /home/user/.claude/settings.json (global)')
       );
     });
 
@@ -140,9 +140,7 @@ describe('macos command', () => {
 
       await expect(handleMacOSCommand(args)).rejects.toThrow(CCNotifyError);
       // The error message will be from the wrapped file system error, not the outer catch
-      await expect(handleMacOSCommand(args)).rejects.toThrow(
-        'Failed to create configuration directory',
-      );
+      await expect(handleMacOSCommand(args)).rejects.toThrow('Failed to create configuration directory');
     });
 
     it('should handle configuration saving errors', async () => {
@@ -197,9 +195,7 @@ describe('macos command', () => {
       await handleMacOSCommand(args);
 
       expect(console.log).toHaveBeenCalledWith('✅ macOS Stop Hook created successfully!');
-      expect(console.log).toHaveBeenCalledWith(
-        '📁 Configuration: /test/.claude/settings.json (local)',
-      );
+      expect(console.log).toHaveBeenCalledWith('📁 Configuration: /test/.claude/settings.json (local)');
       expect(console.log).toHaveBeenCalledWith('🏷️  Custom title: Test Title');
     });
 
@@ -213,9 +209,7 @@ describe('macos command', () => {
       await handleMacOSCommand(args);
 
       expect(console.log).toHaveBeenCalledWith('✅ macOS Stop Hook created successfully!');
-      expect(console.log).toHaveBeenCalledWith(
-        '📁 Configuration: /home/user/.claude/settings.json (global)',
-      );
+      expect(console.log).toHaveBeenCalledWith('📁 Configuration: /home/user/.claude/settings.json (global)');
       expect(console.log).toHaveBeenCalledWith('🏷️  Title: User message (dynamic)');
     });
 
@@ -240,9 +234,7 @@ describe('macos command', () => {
       };
 
       await expect(handleMacOSCommand(args)).rejects.toThrow(CCNotifyError);
-      await expect(handleMacOSCommand(args)).rejects.toThrow(
-        'Failed to create macOS Stop Hook',
-      );
+      await expect(handleMacOSCommand(args)).rejects.toThrow('Failed to create macOS Stop Hook');
     });
 
     it('should handle backup creation errors', async () => {
@@ -278,7 +270,7 @@ describe('macos command', () => {
           hooks: {
             Stop: expect.any(Array),
           },
-        }),
+        })
       );
     });
 

@@ -13,8 +13,7 @@ import { CCNotifyError, ErrorSeverity, ErrorType } from '../../../src/types/inde
 vi.mock('../../../src/services/error-handler.js', () => ({
   errorHandler: {
     createError: vi.fn(
-      (type, message, originalError, severity, context) =>
-        new CCNotifyError(type, message, originalError, severity),
+      (type, message, originalError, severity, context) => new CCNotifyError(type, message, originalError, severity)
     ),
   },
 }));
@@ -31,7 +30,7 @@ describe('Validation Service', () => {
         'https://discordapp.com/api/webhooks/987654321/xyz789abc123',
       ];
 
-      validUrls.forEach((url) => {
+      validUrls.forEach(url => {
         expect(() => validateDiscordWebhookUrl(url)).not.toThrow();
       });
     });
@@ -47,7 +46,7 @@ describe('Validation Service', () => {
         'not-a-url',
       ];
 
-      invalidUrls.forEach((url) => {
+      invalidUrls.forEach(url => {
         expect(() => validateDiscordWebhookUrl(url)).toThrow(CCNotifyError);
         expect(() => validateDiscordWebhookUrl(url)).toThrow(ErrorType.INVALID_WEBHOOK_URL);
 
@@ -61,7 +60,7 @@ describe('Validation Service', () => {
             url: expect.any(String),
             validation: 'format_check',
             pattern: 'discord_webhook_url',
-          }),
+          })
         );
       });
     });
@@ -69,11 +68,9 @@ describe('Validation Service', () => {
     it('should reject non-string inputs with enhanced error handling', () => {
       const invalidInputs = [null, undefined, 123, {}, []];
 
-      invalidInputs.forEach((input) => {
+      invalidInputs.forEach(input => {
         expect(() => validateDiscordWebhookUrl(input as any)).toThrow(CCNotifyError);
-        expect(() => validateDiscordWebhookUrl(input as any)).toThrow(
-          ErrorType.INVALID_WEBHOOK_URL,
-        );
+        expect(() => validateDiscordWebhookUrl(input as any)).toThrow(ErrorType.INVALID_WEBHOOK_URL);
 
         // Verify enhanced error handling was called
         expect(errorHandler.createError).toHaveBeenCalledWith(
@@ -84,7 +81,7 @@ describe('Validation Service', () => {
           expect.objectContaining({
             url: typeof input,
             validation: 'required_string_check',
-          }),
+          })
         );
       });
     });
@@ -102,7 +99,7 @@ describe('Validation Service', () => {
         expect.any(String),
         expect.objectContaining({
           url: expect.not.stringContaining('secret-token-here'),
-        }),
+        })
       );
     });
   });
@@ -120,7 +117,7 @@ describe('Validation Service', () => {
         'ValidTopicName123',
       ];
 
-      validTopics.forEach((topic) => {
+      validTopics.forEach(topic => {
         expect(() => validateNtfyTopicName(topic)).not.toThrow();
       });
     });
@@ -150,7 +147,7 @@ describe('Validation Service', () => {
             validation: 'format_check',
             pattern: 'ntfy_topic_name',
             length: topic.length,
-          }),
+          })
         );
       });
     });
@@ -163,7 +160,7 @@ describe('Validation Service', () => {
         'ends-with-underscore_',
       ];
 
-      boundaryInvalidTopics.forEach((topic) => {
+      boundaryInvalidTopics.forEach(topic => {
         expect(() => validateNtfyTopicName(topic)).toThrow(CCNotifyError);
 
         // Verify boundary check error context
@@ -177,7 +174,7 @@ describe('Validation Service', () => {
             validation: 'boundary_check',
             startsWithInvalid: expect.any(Boolean),
             endsWithInvalid: expect.any(Boolean),
-          }),
+          })
         );
       });
     });
@@ -185,7 +182,7 @@ describe('Validation Service', () => {
     it('should reject non-string inputs with enhanced error handling', () => {
       const invalidInputs = [null, undefined, 123, {}, []];
 
-      invalidInputs.forEach((input) => {
+      invalidInputs.forEach(input => {
         expect(() => validateNtfyTopicName(input as any)).toThrow(CCNotifyError);
         expect(() => validateNtfyTopicName(input as any)).toThrow(ErrorType.INVALID_TOPIC_NAME);
 
@@ -198,7 +195,7 @@ describe('Validation Service', () => {
           expect.objectContaining({
             topicName: typeof input,
             validation: 'required_string_check',
-          }),
+          })
         );
       });
     });
@@ -301,7 +298,7 @@ describe('Validation Service', () => {
         expect.objectContaining({
           validation: 'format_check',
           pattern: 'discord_webhook_url',
-        }),
+        })
       );
     });
 
@@ -320,7 +317,7 @@ describe('Validation Service', () => {
           validation: 'format_check',
           pattern: 'ntfy_topic_name',
           length: testTopic.length,
-        }),
+        })
       );
     });
   });

@@ -44,7 +44,7 @@ describe('CLI Entry Point', () => {
         name: 'ccnotify',
         version: '1.0.0',
         description: 'CLI tool for creating Claude Code Stop Hooks',
-      }),
+      })
     );
 
     // Mock path functions
@@ -68,14 +68,12 @@ describe('CLI Entry Point', () => {
       const program = new Command();
       program
         .name('ccnotify')
-        .description(
-          'CLI tool for creating Claude Code Stop Hooks with Discord and ntfy notifications',
-        )
+        .description('CLI tool for creating Claude Code Stop Hooks with Discord and ntfy notifications')
         .version('1.0.0');
 
       expect(program.name()).toBe('ccnotify');
       expect(program.description()).toBe(
-        'CLI tool for creating Claude Code Stop Hooks with Discord and ntfy notifications',
+        'CLI tool for creating Claude Code Stop Hooks with Discord and ntfy notifications'
       );
     });
 
@@ -105,18 +103,16 @@ For more information, visit: https://github.com/foxytanuki/ccnotify
 
   describe('Command Registration', () => {
     it('should register Discord and ntfy commands', async () => {
-      const { registerDiscordCommand, registerNtfyCommand } = await import(
-        '../../src/commands/index.js'
-      );
+      const { registerDiscordCommand, registerNtfyCommand } = await import('../../src/commands/index.js');
 
       const program = new Command();
 
       // Simulate command registration
-      vi.mocked(registerDiscordCommand).mockImplementation((prog) => {
+      vi.mocked(registerDiscordCommand).mockImplementation(prog => {
         prog.command('discord').description('Create Discord webhook notification Stop Hook');
       });
 
-      vi.mocked(registerNtfyCommand).mockImplementation((prog) => {
+      vi.mocked(registerNtfyCommand).mockImplementation(prog => {
         prog.command('ntfy').description('Create ntfy notification Stop Hook');
       });
 
@@ -168,7 +164,7 @@ For more information, visit: https://github.com/foxytanuki/ccnotify
       const program = new Command();
       program.configureHelp({
         sortSubcommands: true,
-        subcommandTerm: (cmd) => cmd.name() + ' ' + cmd.usage(),
+        subcommandTerm: cmd => cmd.name() + ' ' + cmd.usage(),
       });
 
       // Verify help configuration was applied

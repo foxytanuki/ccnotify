@@ -61,7 +61,7 @@ export class PathResolverImpl implements PathResolver {
           'Unable to determine home directory',
           undefined,
           ErrorSeverity.HIGH,
-          { operation: 'getHomeDirectory' },
+          { operation: 'getHomeDirectory' }
         );
       }
       return home;
@@ -74,7 +74,7 @@ export class PathResolverImpl implements PathResolver {
         'Failed to get home directory',
         error as Error,
         ErrorSeverity.HIGH,
-        { operation: 'getHomeDirectory' },
+        { operation: 'getHomeDirectory' }
       );
     }
   }
@@ -90,7 +90,7 @@ export class PathResolverImpl implements PathResolver {
       // Check if the directory exists
       if (await fileSystemService.fileExists(resolvedPath)) {
         // If it exists, check if it's actually a directory
-        const stats = await import('node:fs').then((fs) => fs.promises.stat(resolvedPath));
+        const stats = await import('node:fs').then(fs => fs.promises.stat(resolvedPath));
         if (!stats.isDirectory()) {
           return false;
         }
@@ -104,7 +104,7 @@ export class PathResolverImpl implements PathResolver {
       try {
         await fileSystemService.writeFile(testFile, 'test');
         // Clean up the test file
-        await import('node:fs').then((fs) => fs.promises.unlink(testFile));
+        await import('node:fs').then(fs => fs.promises.unlink(testFile));
         return true;
       } catch {
         return false;
@@ -129,7 +129,7 @@ export class PathResolverImpl implements PathResolver {
           `Cannot access or create configuration directory: ${configDir}`,
           undefined,
           ErrorSeverity.HIGH,
-          { configDir, isGlobal, operation: 'ensureConfigDirectory' },
+          { configDir, isGlobal, operation: 'ensureConfigDirectory' }
         );
       }
 
@@ -146,7 +146,7 @@ export class PathResolverImpl implements PathResolver {
         `Failed to ensure configuration directory: ${configDir}`,
         error as Error,
         ErrorSeverity.HIGH,
-        { configDir, isGlobal, operation: 'ensureConfigDirectory' },
+        { configDir, isGlobal, operation: 'ensureConfigDirectory' }
       );
     }
   }

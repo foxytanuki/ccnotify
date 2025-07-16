@@ -117,7 +117,7 @@ export async function handleDiscordCommand(args: DiscordCommandArgs): Promise<vo
         command: 'discord',
         global: args.options.global,
         webhookUrl: args.webhookUrl.replace(/\/[\w-]+$/, '/***'),
-      },
+      }
     );
   }
 }

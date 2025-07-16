@@ -118,7 +118,7 @@ export async function handleNtfyCommand(args: NtfyCommandArgs): Promise<void> {
         command: 'ntfy',
         global: args.options.global,
         topicName: args.topicName,
-      },
+      }
     );
   }
 }

@@ -1,5 +1,5 @@
 import { promises as fs } from 'node:fs';
-import { dirname, basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { errorHandler } from '../services/error-handler.js';
 import { CCNotifyError, ErrorSeverity, ErrorType } from '../types/index.js';
 
@@ -97,7 +97,7 @@ export class FileSystemServiceImpl implements FileSystemService {
           `Cannot backup non-existent file: ${filePath}`,
           undefined,
           ErrorSeverity.MEDIUM,
-          { filePath, operation: 'createBackup' },
+          { filePath, operation: 'createBackup' }
         );
       }
 
@@ -121,7 +121,7 @@ export class FileSystemServiceImpl implements FileSystemService {
         `Failed to create backup of ${filePath}`,
         error as Error,
         ErrorSeverity.HIGH,
-        { filePath, operation: 'createBackup' },
+        { filePath, operation: 'createBackup' }
       );
     }
   }
@@ -145,7 +145,7 @@ export class FileSystemServiceImpl implements FileSystemService {
           name: file,
           path: join(dir, file),
           // Extract timestamp from filename for sorting
-          timestamp: file.replace(backupPattern, '')
+          timestamp: file.replace(backupPattern, ''),
         }))
         .sort((a, b) => b.timestamp.localeCompare(a.timestamp)); // Sort by timestamp descending
 
@@ -196,7 +196,7 @@ export const fileUtils = {
         `Failed to parse JSON file: ${path}`,
         error as Error,
         ErrorSeverity.MEDIUM,
-        { path, operation: 'readJsonFile' },
+        { path, operation: 'readJsonFile' }
       );
     }
   },
@@ -217,7 +217,7 @@ export const fileUtils = {
         `Failed to write JSON file: ${path}`,
         error as Error,
         ErrorSeverity.MEDIUM,
-        { path, operation: 'writeJsonFile' },
+        { path, operation: 'writeJsonFile' }
       );
     }
   },

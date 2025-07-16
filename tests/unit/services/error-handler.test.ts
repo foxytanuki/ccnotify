@@ -48,7 +48,7 @@ describe('ErrorHandler', () => {
         ErrorType.INVALID_WEBHOOK_URL,
         'Test error message',
         new Error('Original error'),
-        ErrorSeverity.HIGH,
+        ErrorSeverity.HIGH
       );
 
       expect(error.type).toBe(ErrorType.INVALID_WEBHOOK_URL);
@@ -74,7 +74,7 @@ describe('ErrorHandler', () => {
         ErrorType.FILE_PERMISSION_ERROR,
         'Test error',
         originalError,
-        ErrorSeverity.MEDIUM,
+        ErrorSeverity.MEDIUM
       );
 
       const json = error.toJSON();
@@ -97,7 +97,7 @@ describe('ErrorHandler', () => {
         'JSON parsing failed',
         new Error('Syntax error'),
         ErrorSeverity.HIGH,
-        { filePath: '/test/path' },
+        { filePath: '/test/path' }
       );
 
       expect(error).toBeInstanceOf(CCNotifyError);
@@ -109,11 +109,7 @@ describe('ErrorHandler', () => {
       const nodeError = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
       nodeError.code = 'ENOENT';
 
-      const wrappedError = testErrorHandler.wrapFileSystemError(
-        nodeError,
-        'read file',
-        '/test/path',
-      );
+      const wrappedError = testErrorHandler.wrapFileSystemError(nodeError, 'read file', '/test/path');
 
       expect(wrappedError.type).toBe(ErrorType.FILE_PERMISSION_ERROR);
       expect(wrappedError.message).toContain('File or directory not found');
@@ -124,11 +120,7 @@ describe('ErrorHandler', () => {
       const nodeError = new Error('EACCES: permission denied') as NodeJS.ErrnoException;
       nodeError.code = 'EACCES';
 
-      const wrappedError = testErrorHandler.wrapFileSystemError(
-        nodeError,
-        'write file',
-        '/test/path',
-      );
+      const wrappedError = testErrorHandler.wrapFileSystemError(nodeError, 'write file', '/test/path');
 
       expect(wrappedError.type).toBe(ErrorType.FILE_PERMISSION_ERROR);
       expect(wrappedError.severity).toBe(ErrorSeverity.HIGH);
@@ -208,11 +200,7 @@ describe('ErrorHandler', () => {
       await fileHandler.logError(error);
 
       expect(fs.mkdir).toHaveBeenCalledWith('/test', { recursive: true });
-      expect(fs.appendFile).toHaveBeenCalledWith(
-        '/test/error.log',
-        expect.stringContaining('"level":"ERROR"'),
-        'utf8',
-      );
+      expect(fs.appendFile).toHaveBeenCalledWith('/test/error.log', expect.stringContaining('"level":"ERROR"'), 'utf8');
     });
 
     it('should handle file logging errors gracefully', async () => {
@@ -227,10 +215,7 @@ describe('ErrorHandler', () => {
 
       // Should not throw even if file logging fails
       await expect(fileHandler.logError(error)).resolves.not.toThrow();
-      expect(mockConsoleError).toHaveBeenCalledWith(
-        'Failed to write to log file:',
-        expect.any(Error),
-      );
+      expect(mockConsoleError).toHaveBeenCalledWith('Failed to write to log file:', expect.any(Error));
     });
 
     it('should flush logs to file', async () => {
@@ -245,11 +230,7 @@ describe('ErrorHandler', () => {
 
       await fileHandler.flushLogs();
 
-      expect(fs.appendFile).toHaveBeenCalledWith(
-        '/test/error.log',
-        expect.stringContaining('Test 1'),
-        'utf8',
-      );
+      expect(fs.appendFile).toHaveBeenCalledWith('/test/error.log', expect.stringContaining('Test 1'), 'utf8');
     });
   });
 
@@ -259,7 +240,7 @@ describe('ErrorHandler', () => {
         ErrorType.INVALID_WEBHOOK_URL,
         'Invalid webhook',
         undefined,
-        ErrorSeverity.MEDIUM,
+        ErrorSeverity.MEDIUM
       );
 
       await expect(testErrorHandler.handleError(error)).rejects.toThrow('process.exit called');
@@ -269,9 +250,7 @@ describe('ErrorHandler', () => {
     it('should handle unknown errors by wrapping them', async () => {
       const unknownError = new Error('Unknown error');
 
-      await expect(testErrorHandler.handleUnknownError(unknownError)).rejects.toThrow(
-        'process.exit called',
-      );
+      await expect(testErrorHandler.handleUnknownError(unknownError)).rejects.toThrow('process.exit called');
       expect(mockProcessExit).toHaveBeenCalledWith(ExitCode.COMMAND_ERROR);
     });
 
@@ -280,23 +259,19 @@ describe('ErrorHandler', () => {
 
       await expect(testErrorHandler.handleError(error)).rejects.toThrow('process.exit called');
 
-      expect(mockConsoleError).toHaveBeenCalledWith(
-        expect.stringContaining('❌ Error: Invalid topic name'),
-      );
+      expect(mockConsoleError).toHaveBeenCalledWith(expect.stringContaining('❌ Error: Invalid topic name'));
     });
 
     it('should show debug information when debug level is high', async () => {
       const error = new CCNotifyError(
         ErrorType.FILE_PERMISSION_ERROR,
         'Permission denied',
-        new Error('Original error'),
+        new Error('Original error')
       );
 
       await expect(testErrorHandler.handleError(error)).rejects.toThrow('process.exit called');
 
-      expect(mockConsoleError).toHaveBeenCalledWith(
-        expect.stringContaining('Error Type: FILE_PERMISSION_ERROR'),
-      );
+      expect(mockConsoleError).toHaveBeenCalledWith(expect.stringContaining('Error Type: FILE_PERMISSION_ERROR'));
       expect(mockConsoleError).toHaveBeenCalledWith(expect.stringContaining('Severity: MEDIUM'));
     });
   });
@@ -333,12 +308,7 @@ describe('ErrorHandler', () => {
     });
 
     it('should create errors through convenience function', () => {
-      const error = createError(
-        ErrorType.JSON_PARSE_ERROR,
-        'JSON error',
-        new Error('Original'),
-        ErrorSeverity.HIGH,
-      );
+      const error = createError(ErrorType.JSON_PARSE_ERROR, 'JSON error', new Error('Original'), ErrorSeverity.HIGH);
 
       expect(error).toBeInstanceOf(CCNotifyError);
       expect(error.type).toBe(ErrorType.JSON_PARSE_ERROR);

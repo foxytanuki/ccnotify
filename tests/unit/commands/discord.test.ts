@@ -22,9 +22,7 @@ describe('discord command', () => {
     vi.clearAllMocks();
 
     // Setup default mocks
-    mockValidateAndSanitizeDiscordUrl.mockReturnValue(
-      'https://discord.com/api/webhooks/123/valid-token',
-    );
+    mockValidateAndSanitizeDiscordUrl.mockReturnValue('https://discord.com/api/webhooks/123/valid-token');
     mockConfigManager.getConfigPath.mockReturnValue('/test/.claude/settings.json');
     mockConfigManager.loadConfig.mockResolvedValue({});
     mockConfigManager.mergeConfig.mockReturnValue({
@@ -63,14 +61,12 @@ describe('discord command', () => {
 
       await handleDiscordCommand(args);
 
-      expect(mockValidateAndSanitizeDiscordUrl).toHaveBeenCalledWith(
-        'https://discord.com/api/webhooks/123/test-token',
-      );
+      expect(mockValidateAndSanitizeDiscordUrl).toHaveBeenCalledWith('https://discord.com/api/webhooks/123/test-token');
       expect(mockConfigManager.getConfigPath).toHaveBeenCalledWith(false);
       expect(mockFileSystemService.ensureDirectory).toHaveBeenCalledWith('/test/.claude');
       expect(mockConfigManager.loadConfig).toHaveBeenCalledWith('/test/.claude/settings.json');
       expect(mockHookGenerator.generateDiscordHook).toHaveBeenCalledWith(
-        'https://discord.com/api/webhooks/123/valid-token',
+        'https://discord.com/api/webhooks/123/valid-token'
       );
       expect(mockConfigManager.saveConfig).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith('✅ Discord Stop Hook created successfully!');
@@ -86,7 +82,7 @@ describe('discord command', () => {
 
       expect(mockConfigManager.getConfigPath).toHaveBeenCalledWith(true);
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Configuration: /test/.claude/settings.json (global)'),
+        expect.stringContaining('Configuration: /test/.claude/settings.json (global)')
       );
     });
 
@@ -118,10 +114,7 @@ describe('discord command', () => {
     });
 
     it('should handle validation errors', async () => {
-      const validationError = new CCNotifyError(
-        ErrorType.INVALID_WEBHOOK_URL,
-        'Invalid webhook URL',
-      );
+      const validationError = new CCNotifyError(ErrorType.INVALID_WEBHOOK_URL, 'Invalid webhook URL');
       mockValidateAndSanitizeDiscordUrl.mockImplementation(() => {
         throw validationError;
       });
@@ -156,9 +149,7 @@ describe('discord command', () => {
       };
 
       await expect(handleDiscordCommand(args)).rejects.toThrow(CCNotifyError);
-      await expect(handleDiscordCommand(args)).rejects.toThrow(
-        'Failed to create Discord Stop Hook',
-      );
+      await expect(handleDiscordCommand(args)).rejects.toThrow('Failed to create Discord Stop Hook');
     });
 
     it('should handle configuration saving errors', async () => {
@@ -215,17 +206,13 @@ describe('discord command', () => {
       await handleDiscordCommand(args);
 
       expect(console.log).toHaveBeenCalledWith('✅ Discord Stop Hook created successfully!');
-      expect(console.log).toHaveBeenCalledWith(
-        '📁 Configuration: /test/.claude/settings.json (local)',
-      );
-      expect(console.log).toHaveBeenCalledWith(
-        '🔗 Webhook URL: https://discord.com/api/webhooks/123/***',
-      );
+      expect(console.log).toHaveBeenCalledWith('📁 Configuration: /test/.claude/settings.json (local)');
+      expect(console.log).toHaveBeenCalledWith('🔗 Webhook URL: https://discord.com/api/webhooks/123/***');
     });
 
     it('should hide webhook token in success message', async () => {
       mockValidateAndSanitizeDiscordUrl.mockReturnValue(
-        'https://discord.com/api/webhooks/123456789/very-secret-token-here',
+        'https://discord.com/api/webhooks/123456789/very-secret-token-here'
       );
 
       const args: DiscordCommandArgs = {
@@ -235,9 +222,7 @@ describe('discord command', () => {
 
       await handleDiscordCommand(args);
 
-      expect(console.log).toHaveBeenCalledWith(
-        '🔗 Webhook URL: https://discord.com/api/webhooks/123456789/***',
-      );
+      expect(console.log).toHaveBeenCalledWith('🔗 Webhook URL: https://discord.com/api/webhooks/123456789/***');
     });
 
     it('should handle undefined global option', async () => {
@@ -276,9 +261,7 @@ describe('discord command', () => {
       };
 
       await expect(handleDiscordCommand(args)).rejects.toThrow(CCNotifyError);
-      await expect(handleDiscordCommand(args)).rejects.toThrow(
-        'Failed to create Discord Stop Hook',
-      );
+      await expect(handleDiscordCommand(args)).rejects.toThrow('Failed to create Discord Stop Hook');
     });
 
     it('should handle backup creation errors', async () => {
@@ -316,7 +299,7 @@ describe('discord command', () => {
           hooks: {
             Stop: expect.any(Array),
           },
-        }),
+        })
       );
     });
   });

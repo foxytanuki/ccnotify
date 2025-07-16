@@ -119,11 +119,7 @@ describe('TypeScript Types', () => {
 
     it('should create CCNotifyError with original error', () => {
       const originalError = new Error('Original error');
-      const error = new CCNotifyError(
-        ErrorType.JSON_PARSE_ERROR,
-        'JSON parsing failed',
-        originalError,
-      );
+      const error = new CCNotifyError(ErrorType.JSON_PARSE_ERROR, 'JSON parsing failed', originalError);
       expect(error.type).toBe(ErrorType.JSON_PARSE_ERROR);
       expect(error.message).toBe('JSON parsing failed');
       expect(error.originalError).toBe(originalError);

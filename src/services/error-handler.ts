@@ -175,7 +175,7 @@ export class ErrorHandler {
     message: string,
     originalError?: Error,
     severity: ErrorSeverity = ErrorSeverity.MEDIUM,
-    context?: Record<string, any>,
+    context?: Record<string, any>
   ): CCNotifyError {
     const error = new CCNotifyError(type, message, originalError, severity);
 
@@ -246,7 +246,7 @@ export class ErrorHandler {
       `Invalid JSON in configuration file: ${filePath}`,
       jsonError,
       ErrorSeverity.MEDIUM,
-      { filePath, originalMessage: jsonError.message },
+      { filePath, originalMessage: jsonError.message }
     );
   }
 
@@ -291,19 +291,14 @@ export class ErrorHandler {
     }
 
     if (error instanceof Error) {
-      return this.createError(
-        ErrorType.COMMAND_ERROR,
-        `Unexpected error: ${error.message}`,
-        error,
-        ErrorSeverity.HIGH,
-      );
+      return this.createError(ErrorType.COMMAND_ERROR, `Unexpected error: ${error.message}`, error, ErrorSeverity.HIGH);
     }
 
     return this.createError(
       ErrorType.COMMAND_ERROR,
       `Unknown error occurred: ${String(error)}`,
       undefined,
-      ErrorSeverity.HIGH,
+      ErrorSeverity.HIGH
     );
   }
 
@@ -351,9 +346,7 @@ export class ErrorHandler {
 
     // Show context in verbose mode
     if (this.config.debugLevel >= DebugLevel.VERBOSE && entry.context) {
-      console.error(
-        `${colors.dim}Context: ${JSON.stringify(entry.context, null, 2)}${colors.reset}`,
-      );
+      console.error(`${colors.dim}Context: ${JSON.stringify(entry.context, null, 2)}${colors.reset}`);
     }
   }
 
@@ -425,9 +418,7 @@ export class ErrorHandler {
    * Determine if colors should be used
    */
   private shouldUseColors(): boolean {
-    return (
-      process.env.FORCE_COLOR !== '0' && process.env.NO_COLOR === undefined && process.stdout.isTTY
-    );
+    return process.env.FORCE_COLOR !== '0' && process.env.NO_COLOR === undefined && process.stdout.isTTY;
   }
 
   /**
@@ -482,7 +473,7 @@ export class ErrorHandler {
       await fs.mkdir(logDir, { recursive: true });
 
       // Write all buffered logs
-      const logLines = this.logBuffer.map((entry) => JSON.stringify(entry)).join('\n') + '\n';
+      const logLines = this.logBuffer.map(entry => JSON.stringify(entry)).join('\n') + '\n';
       await fs.appendFile(this.config.logFilePath, logLines, 'utf8');
 
       this.clearLogBuffer();
@@ -515,7 +506,7 @@ export function createError(
   type: ErrorType,
   message: string,
   originalError?: Error,
-  severity: ErrorSeverity = ErrorSeverity.MEDIUM,
+  severity: ErrorSeverity = ErrorSeverity.MEDIUM
 ): CCNotifyError {
   return errorHandler.createError(type, message, originalError, severity);
 }

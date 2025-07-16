@@ -3,7 +3,7 @@ import type { Command } from 'commander';
 import { configManager } from '../services/config.js';
 import { errorHandler } from '../services/error-handler.js';
 import { hookGenerator } from '../services/hooks.js';
-import { CCNotifyError, type MacOSCommandArgs, ErrorType } from '../types/index.js';
+import { CCNotifyError, ErrorType, type MacOSCommandArgs } from '../types/index.js';
 import { fileSystemService } from '../utils/file.js';
 
 /**
@@ -116,7 +116,7 @@ export async function handleMacOSCommand(args: MacOSCommandArgs): Promise<void> 
         command: 'macos',
         global: args.options.global,
         title: args.title,
-      },
+      }
     );
   }
 }

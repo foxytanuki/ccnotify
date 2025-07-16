@@ -113,7 +113,7 @@ export class CCNotifyError extends Error {
     public type: ErrorType,
     message: string,
     public originalError?: Error,
-    severity: ErrorSeverity = ErrorSeverity.MEDIUM,
+    severity: ErrorSeverity = ErrorSeverity.MEDIUM
   ) {
     super(message);
     this.name = 'CCNotifyError';
@@ -163,7 +163,7 @@ export class CCNotifyError extends Error {
     const suggestions = this.getSuggestions();
 
     if (suggestions.length > 0) {
-      return `${baseMessage}\n\nSuggestions:\n${suggestions.map((s) => `  • ${s}`).join('\n')}`;
+      return `${baseMessage}\n\nSuggestions:\n${suggestions.map(s => `  • ${s}`).join('\n')}`;
     }
 
     return baseMessage;

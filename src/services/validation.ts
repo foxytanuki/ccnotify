@@ -12,7 +12,7 @@ export function validateDiscordWebhookUrl(url: string): void {
       'Discord webhook URL is required and must be a string',
       undefined,
       ErrorSeverity.MEDIUM,
-      { url: typeof url, validation: 'required_string_check' },
+      { url: typeof url, validation: 'required_string_check' }
     );
   }
 
@@ -29,7 +29,7 @@ export function validateDiscordWebhookUrl(url: string): void {
         url: url.replace(/\/[\w-]+$/, '/***'), // Hide token in logs
         validation: 'format_check',
         pattern: 'discord_webhook_url',
-      },
+      }
     );
   }
 }
@@ -45,7 +45,7 @@ export function validateNtfyTopicName(topicName: string): void {
       'ntfy topic name is required and must be a string',
       undefined,
       ErrorSeverity.MEDIUM,
-      { topicName: typeof topicName, validation: 'required_string_check' },
+      { topicName: typeof topicName, validation: 'required_string_check' }
     );
   }
 
@@ -63,17 +63,12 @@ export function validateNtfyTopicName(topicName: string): void {
         validation: 'format_check',
         pattern: 'ntfy_topic_name',
         length: topicName.length,
-      },
+      }
     );
   }
 
   // Additional validation: topic name cannot start or end with hyphen/underscore
-  if (
-    topicName.startsWith('-') ||
-    topicName.startsWith('_') ||
-    topicName.endsWith('-') ||
-    topicName.endsWith('_')
-  ) {
+  if (topicName.startsWith('-') || topicName.startsWith('_') || topicName.endsWith('-') || topicName.endsWith('_')) {
     throw errorHandler.createError(
       ErrorType.INVALID_TOPIC_NAME,
       'ntfy topic name cannot start or end with hyphens or underscores',
@@ -84,7 +79,7 @@ export function validateNtfyTopicName(topicName: string): void {
         validation: 'boundary_check',
         startsWithInvalid: topicName.startsWith('-') || topicName.startsWith('_'),
         endsWithInvalid: topicName.endsWith('-') || topicName.endsWith('_'),
-      },
+      }
     );
   }
 }

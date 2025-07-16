@@ -108,18 +108,14 @@ describe('ConfigManagerImpl', () => {
         },
       } as any;
 
-      await expect(configManager.saveConfig('/path/to/config.json', invalidConfig)).rejects.toThrow(
-        CCNotifyError,
-      );
+      await expect(configManager.saveConfig('/path/to/config.json', invalidConfig)).rejects.toThrow(CCNotifyError);
     });
 
     it('should throw CCNotifyError when file write fails', async () => {
       const config: ClaudeConfig = {};
       vi.mocked(fileUtils.safeWriteJsonFile).mockRejectedValue(new Error('Write error'));
 
-      await expect(configManager.saveConfig('/path/to/config.json', config)).rejects.toThrow(
-        CCNotifyError,
-      );
+      await expect(configManager.saveConfig('/path/to/config.json', config)).rejects.toThrow(CCNotifyError);
     });
   });
 
@@ -137,9 +133,7 @@ describe('ConfigManagerImpl', () => {
     it('should throw CCNotifyError when backup fails', async () => {
       vi.mocked(fileSystemService.createBackup).mockRejectedValue(new Error('Backup error'));
 
-      await expect(configManager.backupConfig('/path/to/config.json')).rejects.toThrow(
-        CCNotifyError,
-      );
+      await expect(configManager.backupConfig('/path/to/config.json')).rejects.toThrow(CCNotifyError);
     });
   });
 
@@ -317,7 +311,7 @@ describe('ConfigManagerImpl', () => {
       vi.mocked(fileUtils.readJsonFile).mockResolvedValue(null);
 
       await expect(configManager.loadConfig('/path/to/config.json')).rejects.toThrow(
-        'Configuration cannot be null or undefined',
+        'Configuration cannot be null or undefined'
       );
     });
 
@@ -325,9 +319,7 @@ describe('ConfigManagerImpl', () => {
       vi.mocked(fileSystemService.fileExists).mockResolvedValue(true);
       vi.mocked(fileUtils.readJsonFile).mockResolvedValue('string config');
 
-      await expect(configManager.loadConfig('/path/to/config.json')).rejects.toThrow(
-        'Configuration must be an object',
-      );
+      await expect(configManager.loadConfig('/path/to/config.json')).rejects.toThrow('Configuration must be an object');
     });
 
     it('should reject invalid hooks structure', async () => {
@@ -339,7 +331,7 @@ describe('ConfigManagerImpl', () => {
       vi.mocked(fileUtils.readJsonFile).mockResolvedValue(invalidConfig);
 
       await expect(configManager.loadConfig('/path/to/config.json')).rejects.toThrow(
-        'hooks property must be an object',
+        'hooks property must be an object'
       );
     });
 
@@ -353,9 +345,7 @@ describe('ConfigManagerImpl', () => {
       vi.mocked(fileSystemService.fileExists).mockResolvedValue(true);
       vi.mocked(fileUtils.readJsonFile).mockResolvedValue(invalidConfig);
 
-      await expect(configManager.loadConfig('/path/to/config.json')).rejects.toThrow(
-        'hooks.Stop must be an array',
-      );
+      await expect(configManager.loadConfig('/path/to/config.json')).rejects.toThrow('hooks.Stop must be an array');
     });
 
     it('should reject Stop hook without matcher', async () => {
@@ -373,7 +363,7 @@ describe('ConfigManagerImpl', () => {
       vi.mocked(fileUtils.readJsonFile).mockResolvedValue(invalidConfig);
 
       await expect(configManager.loadConfig('/path/to/config.json')).rejects.toThrow(
-        'Stop hook at index 0 must have a string matcher',
+        'Stop hook at index 0 must have a string matcher'
       );
     });
 
@@ -393,7 +383,7 @@ describe('ConfigManagerImpl', () => {
       vi.mocked(fileUtils.readJsonFile).mockResolvedValue(invalidConfig);
 
       await expect(configManager.loadConfig('/path/to/config.json')).rejects.toThrow(
-        "Hook at index 0.0 must have type 'command'",
+        "Hook at index 0.0 must have type 'command'"
       );
     });
 
@@ -413,7 +403,7 @@ describe('ConfigManagerImpl', () => {
       vi.mocked(fileUtils.readJsonFile).mockResolvedValue(invalidConfig);
 
       await expect(configManager.loadConfig('/path/to/config.json')).rejects.toThrow(
-        'Hook at index 0.0 must have a string command',
+        'Hook at index 0.0 must have a string command'
       );
     });
   });

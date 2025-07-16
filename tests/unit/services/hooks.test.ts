@@ -282,7 +282,7 @@ describe('HookGeneratorImpl', () => {
       expect(mockFileSystemService.ensureDirectory).toHaveBeenCalledWith('/path/to');
       expect(mockFileSystemService.writeFile).toHaveBeenCalledWith(
         scriptPath,
-        expect.stringContaining(`DEFAULT_TOPIC_NAME="${topicName}"`),
+        expect.stringContaining(`DEFAULT_TOPIC_NAME="${topicName}"`)
       );
     });
 
@@ -349,9 +349,7 @@ describe('HookGeneratorImpl', () => {
 
       mockFileSystemService.ensureDirectory.mockRejectedValue(error);
 
-      await expect(hookGenerator.createNtfyScript(topicName, scriptPath)).rejects.toThrow(
-        CCNotifyError,
-      );
+      await expect(hookGenerator.createNtfyScript(topicName, scriptPath)).rejects.toThrow(CCNotifyError);
 
       try {
         await hookGenerator.createNtfyScript(topicName, scriptPath);
@@ -370,9 +368,7 @@ describe('HookGeneratorImpl', () => {
       mockFileSystemService.ensureDirectory.mockResolvedValue(undefined);
       mockFileSystemService.writeFile.mockRejectedValue(error);
 
-      await expect(hookGenerator.createNtfyScript(topicName, scriptPath)).rejects.toThrow(
-        CCNotifyError,
-      );
+      await expect(hookGenerator.createNtfyScript(topicName, scriptPath)).rejects.toThrow(CCNotifyError);
     });
 
     it('should make script executable on Unix-like systems', async () => {

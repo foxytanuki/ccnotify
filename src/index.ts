@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
-import { registerDiscordCommand, registerNtfyCommand, registerMacOSCommand } from './commands/index.js';
+import { registerDiscordCommand, registerMacOSCommand, registerNtfyCommand } from './commands/index.js';
 import { errorHandler } from './services/error-handler.js';
 import { ErrorSeverity, ErrorType } from './types/index.js';
 
@@ -29,7 +29,7 @@ function createProgram(): Command {
   // Configure help
   program.configureHelp({
     sortSubcommands: true,
-    subcommandTerm: (cmd) => cmd.name() + ' ' + cmd.usage(),
+    subcommandTerm: cmd => cmd.name() + ' ' + cmd.usage(),
   });
 
   // Add custom help text
@@ -46,7 +46,7 @@ Examples:
   $ ccnotify macos --global
 
 For more information, visit: https://github.com/foxytanuki/ccnotify
-`,
+`
   );
 
   return program;
@@ -71,31 +71,21 @@ function registerCommands(program: Command): void {
  */
 function setupErrorHandling(): void {
   // Handle uncaught exceptions
-  process.on('uncaughtException', async (error) => {
+  process.on('uncaughtException', async error => {
     await errorHandler.logError(
-      errorHandler.createError(
-        ErrorType.COMMAND_ERROR,
-        'Uncaught exception occurred',
-        error,
-        ErrorSeverity.CRITICAL,
-      ),
-      { type: 'uncaughtException' },
+      errorHandler.createError(ErrorType.COMMAND_ERROR, 'Uncaught exception occurred', error, ErrorSeverity.CRITICAL),
+      { type: 'uncaughtException' }
     );
     await errorHandler.flushLogs();
     process.exit(1);
   });
 
   // Handle unhandled promise rejections
-  process.on('unhandledRejection', async (reason) => {
+  process.on('unhandledRejection', async reason => {
     const error = reason instanceof Error ? reason : new Error(String(reason));
     await errorHandler.logError(
-      errorHandler.createError(
-        ErrorType.COMMAND_ERROR,
-        'Unhandled promise rejection',
-        error,
-        ErrorSeverity.CRITICAL,
-      ),
-      { type: 'unhandledRejection', reason },
+      errorHandler.createError(ErrorType.COMMAND_ERROR, 'Unhandled promise rejection', error, ErrorSeverity.CRITICAL),
+      { type: 'unhandledRejection', reason }
     );
     await errorHandler.flushLogs();
     process.exit(1);
@@ -143,7 +133,7 @@ async function main(): Promise<void> {
 }
 
 // Run the CLI
-main().catch((error) => {
+main().catch(error => {
   console.error('❌ Fatal error:', error);
   process.exit(1);
 });

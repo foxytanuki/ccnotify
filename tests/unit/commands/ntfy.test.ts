@@ -68,10 +68,7 @@ describe('ntfy command', () => {
       expect(mockConfigManager.loadConfig).toHaveBeenCalledWith('/test/.claude/settings.json');
       expect(mockHookGenerator.generateNtfyHook).toHaveBeenCalledWith('valid-topic');
       expect(mockConfigManager.saveConfig).toHaveBeenCalled();
-      expect(mockHookGenerator.createNtfyScript).toHaveBeenCalledWith(
-        'valid-topic',
-        '/test/.claude/ntfy.sh',
-      );
+      expect(mockHookGenerator.createNtfyScript).toHaveBeenCalledWith('valid-topic', '/test/.claude/ntfy.sh');
       expect(console.log).toHaveBeenCalledWith('✅ ntfy Stop Hook created successfully!');
     });
 
@@ -85,7 +82,7 @@ describe('ntfy command', () => {
 
       expect(mockConfigManager.getConfigPath).toHaveBeenCalledWith(true);
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Configuration: /test/.claude/settings.json (global)'),
+        expect.stringContaining('Configuration: /test/.claude/settings.json (global)')
       );
     });
 
@@ -156,10 +153,7 @@ describe('ntfy command', () => {
     });
 
     it('should handle script creation errors', async () => {
-      const scriptError = new CCNotifyError(
-        ErrorType.FILE_PERMISSION_ERROR,
-        'Failed to create script',
-      );
+      const scriptError = new CCNotifyError(ErrorType.FILE_PERMISSION_ERROR, 'Failed to create script');
       mockHookGenerator.createNtfyScript.mockRejectedValue(scriptError);
 
       const args: NtfyCommandArgs = {
@@ -225,10 +219,7 @@ describe('ntfy command', () => {
 
       await handleNtfyCommand(args);
 
-      expect(mockHookGenerator.createNtfyScript).toHaveBeenCalledWith(
-        'valid-topic',
-        '/custom/path/.claude/ntfy.sh',
-      );
+      expect(mockHookGenerator.createNtfyScript).toHaveBeenCalledWith('valid-topic', '/custom/path/.claude/ntfy.sh');
     });
 
     it('should display correct success messages', async () => {
@@ -240,9 +231,7 @@ describe('ntfy command', () => {
       await handleNtfyCommand(args);
 
       expect(console.log).toHaveBeenCalledWith('✅ ntfy Stop Hook created successfully!');
-      expect(console.log).toHaveBeenCalledWith(
-        '📁 Configuration: /test/.claude/settings.json (local)',
-      );
+      expect(console.log).toHaveBeenCalledWith('📁 Configuration: /test/.claude/settings.json (local)');
       expect(console.log).toHaveBeenCalledWith('📜 Script: /test/.claude/ntfy.sh');
       expect(console.log).toHaveBeenCalledWith('📢 Topic: valid-topic');
     });

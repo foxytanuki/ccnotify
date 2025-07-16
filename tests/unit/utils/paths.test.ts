@@ -110,13 +110,13 @@ describe('PathResolverImpl', () => {
 
   describe('validateDirectoryPath', () => {
     it('should return true for valid existing directory', async () => {
-      const mockStat = await import('node:fs').then((fs) => fs.promises.stat);
+      const mockStat = await import('node:fs').then(fs => fs.promises.stat);
       vi.mocked(fileSystemService.fileExists).mockResolvedValue(true);
       vi.mocked(mockStat).mockResolvedValue({ isDirectory: () => true } as any);
       vi.mocked(fileSystemService.ensureDirectory).mockResolvedValue();
       vi.mocked(fileSystemService.writeFile).mockResolvedValue();
 
-      const mockUnlink = await import('node:fs').then((fs) => fs.promises.unlink);
+      const mockUnlink = await import('node:fs').then(fs => fs.promises.unlink);
       vi.mocked(mockUnlink).mockResolvedValue();
 
       const result = await resolver.validateDirectoryPath('/valid/path');
@@ -124,7 +124,7 @@ describe('PathResolverImpl', () => {
     });
 
     it('should return false when path exists but is not a directory', async () => {
-      const mockStat = await import('node:fs').then((fs) => fs.promises.stat);
+      const mockStat = await import('node:fs').then(fs => fs.promises.stat);
       vi.mocked(fileSystemService.fileExists).mockResolvedValue(true);
       vi.mocked(mockStat).mockResolvedValue({ isDirectory: () => false } as any);
 
@@ -139,7 +139,7 @@ describe('PathResolverImpl', () => {
       vi.mocked(fileSystemService.ensureDirectory).mockResolvedValue();
       vi.mocked(fileSystemService.writeFile).mockResolvedValue();
 
-      const mockUnlink = await import('node:fs').then((fs) => fs.promises.unlink);
+      const mockUnlink = await import('node:fs').then(fs => fs.promises.unlink);
       vi.mocked(mockUnlink).mockResolvedValue();
 
       const result = await resolver.validateDirectoryPath('/new/path');
@@ -157,9 +157,7 @@ describe('PathResolverImpl', () => {
 
     it('should return false when directory creation fails', async () => {
       vi.mocked(fileSystemService.fileExists).mockResolvedValue(false);
-      vi.mocked(fileSystemService.ensureDirectory).mockRejectedValue(
-        new Error('Permission denied'),
-      );
+      vi.mocked(fileSystemService.ensureDirectory).mockRejectedValue(new Error('Permission denied'));
 
       const result = await resolver.validateDirectoryPath('/invalid/path');
       expect(result).toBe(false);
@@ -174,7 +172,7 @@ describe('PathResolverImpl', () => {
       vi.mocked(fileSystemService.ensureDirectory).mockResolvedValue();
       vi.mocked(fileSystemService.writeFile).mockResolvedValue();
 
-      const mockUnlink = await import('node:fs').then((fs) => fs.promises.unlink);
+      const mockUnlink = await import('node:fs').then(fs => fs.promises.unlink);
       vi.mocked(mockUnlink).mockResolvedValue();
 
       const result = await resolver.ensureConfigDirectory(false);
@@ -189,7 +187,7 @@ describe('PathResolverImpl', () => {
       vi.mocked(fileSystemService.ensureDirectory).mockResolvedValue();
       vi.mocked(fileSystemService.writeFile).mockResolvedValue();
 
-      const mockUnlink = await import('node:fs').then((fs) => fs.promises.unlink);
+      const mockUnlink = await import('node:fs').then(fs => fs.promises.unlink);
       vi.mocked(mockUnlink).mockResolvedValue();
 
       const result = await resolver.ensureConfigDirectory(true);
@@ -199,25 +197,21 @@ describe('PathResolverImpl', () => {
 
     it('should throw CCNotifyError when directory validation fails', async () => {
       vi.mocked(fileSystemService.fileExists).mockResolvedValue(false);
-      vi.mocked(fileSystemService.ensureDirectory).mockRejectedValue(
-        new Error('Permission denied'),
-      );
+      vi.mocked(fileSystemService.ensureDirectory).mockRejectedValue(new Error('Permission denied'));
 
       await expect(resolver.ensureConfigDirectory(false)).rejects.toThrow(CCNotifyError);
       await expect(resolver.ensureConfigDirectory(false)).rejects.toThrow(
-        'Cannot access or create configuration directory',
+        'Cannot access or create configuration directory'
       );
     });
 
     it('should throw CCNotifyError when directory creation fails', async () => {
       vi.mocked(fileSystemService.fileExists).mockResolvedValue(false);
-      vi.mocked(fileSystemService.ensureDirectory).mockRejectedValue(
-        new Error('Permission denied'),
-      );
+      vi.mocked(fileSystemService.ensureDirectory).mockRejectedValue(new Error('Permission denied'));
 
       await expect(resolver.ensureConfigDirectory(false)).rejects.toThrow(CCNotifyError);
       await expect(resolver.ensureConfigDirectory(false)).rejects.toThrow(
-        'Cannot access or create configuration directory',
+        'Cannot access or create configuration directory'
       );
     });
   });
@@ -263,7 +257,7 @@ describe('pathUtils', () => {
       vi.mocked(fileSystemService.ensureDirectory).mockResolvedValue();
       vi.mocked(fileSystemService.writeFile).mockResolvedValue();
 
-      const mockUnlink = await import('node:fs').then((fs) => fs.promises.unlink);
+      const mockUnlink = await import('node:fs').then(fs => fs.promises.unlink);
       vi.mocked(mockUnlink).mockResolvedValue();
 
       const result = await pathUtils.getValidatedConfigPath(false);
@@ -279,7 +273,7 @@ describe('pathUtils', () => {
       vi.mocked(fileSystemService.ensureDirectory).mockResolvedValue();
       vi.mocked(fileSystemService.writeFile).mockResolvedValue();
 
-      const mockUnlink = await import('node:fs').then((fs) => fs.promises.unlink);
+      const mockUnlink = await import('node:fs').then(fs => fs.promises.unlink);
       vi.mocked(mockUnlink).mockResolvedValue();
 
       const result = await pathUtils.getValidatedScriptPath(true, 'ntfy.sh');

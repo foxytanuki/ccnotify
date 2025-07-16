@@ -119,7 +119,7 @@ export class HookGeneratorImpl implements HookGenerator {
         `Failed to create ntfy script at ${scriptPath}`,
         error as Error,
         ErrorSeverity.HIGH,
-        { topicName, scriptPath, operation: 'createNtfyScript' },
+        { topicName, scriptPath, operation: 'createNtfyScript' }
       );
     }
   }
@@ -236,9 +236,7 @@ fi`.trim();
    */
   private createMacOSCommand(title?: string): string {
     // Generate the bash script with proper title handling
-    const mainTitleLogic = title 
-      ? `MAIN_TITLE="${title.replace(/"/g, '\\"')}"` 
-      : 'MAIN_TITLE="Claude Code"';
+    const mainTitleLogic = title ? `MAIN_TITLE="${title.replace(/"/g, '\\"')}"` : 'MAIN_TITLE="Claude Code"';
 
     const command = `#!/bin/bash
 # Process transcript and send macOS notification
