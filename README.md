@@ -6,6 +6,8 @@
 
 A CLI tool for creating Claude Code Stop Hooks with Discord, ntfy, and macOS notifications.
 
+[日本語ドキュメントはこちら](./docs/ja/index.md)
+
 ## Overview
 
 `ccnotify` simplifies the creation of Stop Hooks for Claude Code by automatically generating or updating the configuration file (`.claude/settings.local.json` for local projects or `~/.claude/settings.json` for global settings). This eliminates the manual process of writing hook configurations and provides a streamlined way to set up notifications when Claude Code operations complete.
