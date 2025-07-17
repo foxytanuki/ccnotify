@@ -217,7 +217,7 @@ Add this line to your `.gitignore`:
 
 ## Requirements
 
-- Node.js 18.0.0 or higher
+- Node.js 20.0.0 or higher
 - Claude Code installed and configured
 - For Discord: Valid Discord webhook URL
 - For ntfy: Valid topic name (alphanumeric, hyphens, underscores)
