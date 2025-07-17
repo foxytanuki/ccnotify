@@ -26,7 +26,7 @@ ccnotifyのドキュメントへようこそ。このツールは、Claude Code 
 
 ```bash
 # npxを使用（推奨）
-npx ccnotify discord https://discord.com/api/webhooks/...
+npx ccnotify
 
 # またはグローバルインストール
 npm install -g ccnotify
