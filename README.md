@@ -4,6 +4,8 @@
 [![npm version](https://badge.fury.io/js/ccnotify.svg)](https://badge.fury.io/js/ccnotify)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+![ccnotify](./docs/assets/images/readme01.png)
+
 A CLI tool for creating Claude Code Stop Hooks with Discord, ntfy, and macOS notifications.
 
 [日本語ドキュメントはこちら](./docs/ja/index.md)
