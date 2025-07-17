@@ -8,7 +8,7 @@ A CLI tool for creating Claude Code Stop Hooks with Discord, ntfy, and macOS not
 
 ## Overview
 
-`ccnotify` simplifies the creation of Stop Hooks for Claude Code by automatically generating or updating the `.claude/settings.json` configuration file. This eliminates the manual process of writing hook configurations and provides a streamlined way to set up notifications when Claude Code operations complete.
+`ccnotify` simplifies the creation of Stop Hooks for Claude Code by automatically generating or updating the configuration file (`.claude/settings.local.json` for local projects or `~/.claude/settings.json` for global settings). This eliminates the manual process of writing hook configurations and provides a streamlined way to set up notifications when Claude Code operations complete.
 
 ## Features
 
@@ -20,6 +20,19 @@ A CLI tool for creating Claude Code Stop Hooks with Discord, ntfy, and macOS not
 - **Cross-Platform**: Works on macOS, Linux, and Windows
 
 ## Installation
+
+### ⚠️ Important: Git Security
+
+**It is strongly recommended to add `.claude/settings.local.json` to your `.gitignore` file** to prevent accidentally committing sensitive information such as:
+- Discord webhook URLs containing tokens
+- Personal notification preferences
+- Other potentially sensitive configuration data
+
+Add this line to your `.gitignore`:
+```gitignore
+# Claude Code local settings (may contain sensitive data)
+.claude/settings.local.json
+```
 
 ### Using npx (Recommended)
 
@@ -71,7 +84,7 @@ pnpm link --global
 # Discord notifications
 npx ccnotify discord https://discord.com/api/webhooks/123456789/your-webhook-token
 
-# ntfy notifications  
+# ntfy notifications
 npx ccnotify ntfy my-topic-name
 
 # macOS notifications
@@ -138,7 +151,7 @@ ccnotify --version
 
 ### Local vs Global
 
-- **Local**: Creates/updates `.claude/settings.json` in the current directory
+- **Local**: Creates/updates `.claude/settings.local.json` in the current directory
 - **Global**: Creates/updates `~/.claude/settings.json` in your home directory
 
 ### Configuration File Structure
@@ -161,6 +174,19 @@ The tool creates Stop Hooks in your Claude configuration file:
     ]
   }
 }
+```
+
+### ⚠️ Important: Git Security
+
+**It is strongly recommended to add `.claude/settings.local.json` to your `.gitignore` file** to prevent accidentally committing sensitive information such as:
+- Discord webhook URLs containing tokens
+- Personal notification preferences
+- Other potentially sensitive configuration data
+
+Add this line to your `.gitignore`:
+```gitignore
+# Claude Code local settings (may contain sensitive data)
+.claude/settings.local.json
 ```
 
 ## Notification Types
@@ -249,7 +275,8 @@ The tool provides clear error messages for common issues:
 ### Backup and Recovery
 
 The tool automatically creates backups of existing configuration files before making changes. Backups are stored with timestamps:
-- `.claude/settings.json.backup.YYYY-MM-DDTHH-MM-SS-sssZ`
+- `.claude/settings.local.json.backup.YYYY-MM-DDTHH-MM-SS-sssZ` (for local configurations)
+- `~/.claude/settings.json.backup.YYYY-MM-DDTHH-MM-SS-sssZ` (for global configurations)
 
 ## Development
 
