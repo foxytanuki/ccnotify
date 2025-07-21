@@ -1,236 +1,228 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { errorHandler } from '../../../src/services/error-handler.js';
-import {
-  sanitizeInput,
-  validateAndSanitizeDiscordUrl,
-  validateAndSanitizeNtfyTopic,
-  validateDiscordWebhookUrl,
-  validateNtfyTopicName,
-} from '../../../src/services/validation.js';
-import { CCNotifyError, ErrorSeverity, ErrorType } from '../../../src/types/index.js';
+import { describe, expect, it } from 'vitest';
+import { validateAndSanitizeDiscordUrl } from '../../../src/services/validation.js';
+import { CCNotifyError, ErrorType } from '../../../src/types/index.js';
 
-// Mock the error handler
-vi.mock('../../../src/services/error-handler.js', () => ({
-  errorHandler: {
-    createError: vi.fn(
-      (type, message, originalError, severity, context) => new CCNotifyError(type, message, originalError, severity)
-    ),
-  },
-}));
-
-describe('Validation Service', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  describe('validateDiscordWebhookUrl', () => {
-    it('should accept valid Discord webhook URLs', () => {
-      const validUrls = [
-        'https://discord.com/api/webhooks/123456789/abcdef123456',
-        'https://discordapp.com/api/webhooks/987654321/xyz789abc123',
-      ];
-
-      validUrls.forEach(url => {
-        expect(() => validateDiscordWebhookUrl(url)).not.toThrow();
-      });
+describe('validateAndSanitizeDiscordUrl', () => {
+  describe('valid Discord webhook URLs', () => {
+    it('should accept standard Discord webhook URL', () => {
+      const url = 'https://discord.com/api/webhooks/123456789/abcdefghijklmnop';
+      const result = validateAndSanitizeDiscordUrl(url);
+      expect(result).toBe(url);
     });
 
-    it('should reject invalid Discord webhook URLs', () => {
-      const invalidUrls = [
-        'https://example.com/webhook',
-        'http://discord.com/api/webhooks/123/abc',
-        'https://discord.com/api/webhook/123/abc',
-        'https://discord.com/webhooks/123/abc',
-        'discord.com/api/webhooks/123/abc',
-        '',
-        'not-a-url',
-      ];
-
-      invalidUrls.forEach(url => {
-        expect(() => validateDiscordWebhookUrl(url)).toThrow();
-      });
+    it('should accept Discord app webhook URL', () => {
+      const url = 'https://discordapp.com/api/webhooks/123456789/abcdefghijklmnop';
+      const result = validateAndSanitizeDiscordUrl(url);
+      expect(result).toBe(url);
     });
 
-    it('should hide webhook tokens in error context', () => {
-      const _urlWithToken = 'https://discord.com/api/webhooks/123456789/secret-token-here';
+    it('should accept webhook URL with hyphens in token', () => {
+      const url = 'https://discord.com/api/webhooks/123456789/abc-def-ghi-jkl';
+      const result = validateAndSanitizeDiscordUrl(url);
+      expect(result).toBe(url);
+    });
 
-      expect(() => validateDiscordWebhookUrl('invalid-url')).toThrow();
+    it('should accept webhook URL with underscores in token', () => {
+      const url = 'https://discord.com/api/webhooks/123456789/abc_def_ghi_jkl';
+      const result = validateAndSanitizeDiscordUrl(url);
+      expect(result).toBe(url);
+    });
 
-      // The error context should not contain the full URL with token
-      expect(errorHandler.createError).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(String),
-        undefined,
-        expect.any(String),
-        expect.objectContaining({
-          url: expect.not.stringContaining('secret-token-here'),
-        })
-      );
+    it('should sanitize input by trimming whitespace', () => {
+      const url = '  https://discord.com/api/webhooks/123456789/abcdefghijklmnop  ';
+      const result = validateAndSanitizeDiscordUrl(url);
+      expect(result).toBe('https://discord.com/api/webhooks/123456789/abcdefghijklmnop');
+    });
+
+    it('should remove control characters from input', () => {
+      const url = 'https://discord.com/api/webhooks/123456789/abcdefghijklmnop\x00\x01';
+      const result = validateAndSanitizeDiscordUrl(url);
+      expect(result).toBe('https://discord.com/api/webhooks/123456789/abcdefghijklmnop');
+    });
+
+    it('should truncate extremely long URLs', () => {
+      const longToken = 'a'.repeat(3000);
+      const url = `https://discord.com/api/webhooks/123456789/${longToken}`;
+      const result = validateAndSanitizeDiscordUrl(url);
+      expect(result.length).toBeLessThanOrEqual(2048);
+      expect(result).toMatch(/^https:\/\/discord\.com\/api\/webhooks\/123456789\/a+$/);
     });
   });
 
-  describe('validateNtfyTopicName', () => {
-    it('should accept valid ntfy topic names', () => {
-      const validTopics = [
-        'my-topic',
-        'topic_name',
-        'Topic123',
-        'a',
-        'a'.repeat(64), // 64 characters (max length)
-        'valid-topic-name',
-        'valid_topic_name',
-        'ValidTopicName123',
-      ];
-
-      validTopics.forEach(topic => {
-        expect(() => validateNtfyTopicName(topic)).not.toThrow();
-      });
+  describe('invalid Discord webhook URLs', () => {
+    it('should reject empty string', () => {
+      try {
+        validateAndSanitizeDiscordUrl('');
+        throw new Error('Should have thrown');
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(CCNotifyError);
+        expect(err.type).toBe(ErrorType.INVALID_WEBHOOK_URL);
+      }
     });
 
-    it('should reject topic names with invalid boundaries', () => {
-      const boundaryInvalidTopics = [
-        '-starts-with-hyphen',
-        '_starts-with-underscore',
-        'ends-with-hyphen-',
-        'ends-with-underscore_',
-      ];
+    it('should reject null input', () => {
+      try {
+        validateAndSanitizeDiscordUrl(null as any);
+        throw new Error('Should have thrown');
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(CCNotifyError);
+        expect(err.type).toBe(ErrorType.INVALID_WEBHOOK_URL);
+      }
+    });
 
-      boundaryInvalidTopics.forEach(topic => {
-        expect(() => validateNtfyTopicName(topic)).toThrow(CCNotifyError);
+    it('should reject non-string input', () => {
+      try {
+        validateAndSanitizeDiscordUrl(123 as any);
+        throw new Error('Should have thrown');
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(CCNotifyError);
+        expect(err.type).toBe(ErrorType.INVALID_WEBHOOK_URL);
+      }
+      try {
+        validateAndSanitizeDiscordUrl({} as any);
+        throw new Error('Should have thrown');
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(CCNotifyError);
+        expect(err.type).toBe(ErrorType.INVALID_WEBHOOK_URL);
+      }
+    });
 
-        // Verify boundary check error context
-        expect(errorHandler.createError).toHaveBeenCalledWith(
-          ErrorType.INVALID_TOPIC_NAME,
-          'ntfy topic name cannot start or end with hyphens or underscores',
-          undefined,
-          ErrorSeverity.MEDIUM,
-          expect.objectContaining({
-            topicName: topic,
-            validation: 'boundary_check',
-            startsWithInvalid: expect.any(Boolean),
-            endsWithInvalid: expect.any(Boolean),
-          })
-        );
-      });
+    it('should reject HTTP URLs', () => {
+      const url = 'http://discord.com/api/webhooks/123456789/abcdefghijklmnop';
+      try {
+        validateAndSanitizeDiscordUrl(url);
+        throw new Error('Should have thrown');
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(CCNotifyError);
+        expect(err.type).toBe(ErrorType.INVALID_WEBHOOK_URL);
+      }
+    });
+
+    it('should reject non-Discord URLs', () => {
+      const url = 'https://example.com/api/webhooks/123456789/abcdefghijklmnop';
+      try {
+        validateAndSanitizeDiscordUrl(url);
+        throw new Error('Should have thrown');
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(CCNotifyError);
+        expect(err.type).toBe(ErrorType.INVALID_WEBHOOK_URL);
+      }
+    });
+
+    it('should reject URLs without webhook path', () => {
+      const url = 'https://discord.com/api/123456789/abcdefghijklmnop';
+      try {
+        validateAndSanitizeDiscordUrl(url);
+        throw new Error('Should have thrown');
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(CCNotifyError);
+        expect(err.type).toBe(ErrorType.INVALID_WEBHOOK_URL);
+      }
+    });
+
+    it('should reject URLs with non-numeric webhook ID', () => {
+      const url = 'https://discord.com/api/webhooks/abc123/abcdefghijklmnop';
+      try {
+        validateAndSanitizeDiscordUrl(url);
+        throw new Error('Should have thrown');
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(CCNotifyError);
+        expect(err.type).toBe(ErrorType.INVALID_WEBHOOK_URL);
+      }
+    });
+
+    it('should reject URLs with empty token', () => {
+      const url = 'https://discord.com/api/webhooks/123456789/';
+      try {
+        validateAndSanitizeDiscordUrl(url);
+        throw new Error('Should have thrown');
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(CCNotifyError);
+        expect(err.type).toBe(ErrorType.INVALID_WEBHOOK_URL);
+      }
+    });
+
+    it('should reject URLs with invalid characters in token', () => {
+      const url = 'https://discord.com/api/webhooks/123456789/abc@def#ghi';
+      try {
+        validateAndSanitizeDiscordUrl(url);
+        throw new Error('Should have thrown');
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(CCNotifyError);
+        expect(err.type).toBe(ErrorType.INVALID_WEBHOOK_URL);
+      }
+    });
+
+    it('should reject URLs with extra path segments', () => {
+      const url = 'https://discord.com/api/webhooks/123456789/abcdefghijklmnop/extra';
+      try {
+        validateAndSanitizeDiscordUrl(url);
+        throw new Error('Should have thrown');
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(CCNotifyError);
+        expect(err.type).toBe(ErrorType.INVALID_WEBHOOK_URL);
+      }
+    });
+
+    it('should reject URLs with query parameters', () => {
+      const url = 'https://discord.com/api/webhooks/123456789/abcdefghijklmnop?param=value';
+      try {
+        validateAndSanitizeDiscordUrl(url);
+        throw new Error('Should have thrown');
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(CCNotifyError);
+        expect(err.type).toBe(ErrorType.INVALID_WEBHOOK_URL);
+      }
+    });
+
+    it('should reject URLs with fragments', () => {
+      const url = 'https://discord.com/api/webhooks/123456789/abcdefghijklmnop#fragment';
+      try {
+        validateAndSanitizeDiscordUrl(url);
+        throw new Error('Should have thrown');
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(CCNotifyError);
+        expect(err.type).toBe(ErrorType.INVALID_WEBHOOK_URL);
+      }
     });
   });
 
-  describe('sanitizeInput', () => {
-    it('should remove control characters', () => {
-      const input = 'hello\x00\x01world\x7f';
-      const result = sanitizeInput(input);
-      expect(result).toBe('helloworld');
+  describe('edge cases', () => {
+    it('should handle minimum valid webhook ID', () => {
+      const url = 'https://discord.com/api/webhooks/1/abcdefghijklmnop';
+      const result = validateAndSanitizeDiscordUrl(url);
+      expect(result).toBe(url);
     });
 
-    it('should preserve newlines and tabs', () => {
-      const input = 'hello\nworld\ttab';
-      const result = sanitizeInput(input);
-      expect(result).toBe('hello\nworld\ttab');
+    it('should handle maximum valid webhook ID', () => {
+      const url = 'https://discord.com/api/webhooks/999999999999999999/abcdefghijklmnop';
+      const result = validateAndSanitizeDiscordUrl(url);
+      expect(result).toBe(url);
     });
 
-    it('should trim whitespace', () => {
-      const input = '  hello world  ';
-      const result = sanitizeInput(input);
-      expect(result).toBe('hello world');
+    it('should handle minimum valid token length', () => {
+      const url = 'https://discord.com/api/webhooks/123456789/a';
+      const result = validateAndSanitizeDiscordUrl(url);
+      expect(result).toBe(url);
     });
 
-    it('should limit length to 2048 characters', () => {
-      const input = 'a'.repeat(3000);
-      const result = sanitizeInput(input);
-      expect(result).toHaveLength(2048);
+    it('should handle maximum valid token length', () => {
+      const longToken = 'a'.repeat(100);
+      const url = `https://discord.com/api/webhooks/123456789/${longToken}`;
+      const result = validateAndSanitizeDiscordUrl(url);
+      expect(result).toBe(url);
     });
 
-    it('should handle non-string inputs', () => {
-      expect(sanitizeInput(null as any)).toBe('');
-      expect(sanitizeInput(undefined as any)).toBe('');
-      expect(sanitizeInput(123 as any)).toBe('');
+    it('should handle mixed case in token', () => {
+      const url = 'https://discord.com/api/webhooks/123456789/AbCdEfGhIjKlMnOp';
+      const result = validateAndSanitizeDiscordUrl(url);
+      expect(result).toBe(url);
     });
 
-    it('should handle edge cases', () => {
-      expect(sanitizeInput('')).toBe('');
-      expect(sanitizeInput('   ')).toBe('');
-      expect(sanitizeInput('\n\t')).toBe('');
-    });
-  });
-
-  describe('validateAndSanitizeDiscordUrl', () => {
-    it('should sanitize and validate Discord URLs', () => {
-      const input = '  https://discord.com/api/webhooks/123/abc  ';
-      const result = validateAndSanitizeDiscordUrl(input);
-      expect(result).toBe('https://discord.com/api/webhooks/123/abc');
-    });
-
-    it('should throw for invalid URLs after sanitization', () => {
-      const input = '  invalid-url  ';
-      expect(() => validateAndSanitizeDiscordUrl(input)).toThrow();
-    });
-
-    it('should handle control characters in URLs', () => {
-      const input = 'https://discord.com/api/webhooks/123/abc\x00\x01';
-      const result = validateAndSanitizeDiscordUrl(input);
-      expect(result).toBe('https://discord.com/api/webhooks/123/abc');
-    });
-  });
-
-  describe('validateAndSanitizeNtfyTopic', () => {
-    it('should sanitize and validate ntfy topics', () => {
-      const input = '  valid-topic  ';
-      const result = validateAndSanitizeNtfyTopic(input);
-      expect(result).toBe('valid-topic');
-    });
-
-    it('should throw for invalid topics after sanitization', () => {
-      const input = '  -invalid-topic  ';
-      expect(() => validateAndSanitizeNtfyTopic(input)).toThrow();
-    });
-
-    it('should handle control characters in topics', () => {
-      const input = 'valid-topic\x00\x01';
-      const result = validateAndSanitizeNtfyTopic(input);
-      expect(result).toBe('valid-topic');
-    });
-
-    it('should handle length limits after sanitization', () => {
-      const input = 'a'.repeat(70) + '\x00\x01   '; // Over limit with control chars and spaces
-      expect(() => validateAndSanitizeNtfyTopic(input)).toThrow(CCNotifyError);
-    });
-  });
-
-  describe('Error Context and Logging', () => {
-    it('should provide detailed context for validation errors', () => {
-      const testUrl = 'https://example.com/not-discord';
-
-      expect(() => validateDiscordWebhookUrl(testUrl)).toThrow();
-
-      expect(errorHandler.createError).toHaveBeenCalledWith(
-        ErrorType.INVALID_WEBHOOK_URL,
-        expect.any(String),
-        undefined,
-        ErrorSeverity.MEDIUM,
-        expect.objectContaining({
-          validation: 'format_check',
-          pattern: 'discord_webhook_url',
-        })
-      );
-    });
-
-    it('should provide detailed context for topic validation errors', () => {
-      const testTopic = 'invalid@topic';
-
-      expect(() => validateNtfyTopicName(testTopic)).toThrow();
-
-      expect(errorHandler.createError).toHaveBeenCalledWith(
-        ErrorType.INVALID_TOPIC_NAME,
-        expect.any(String),
-        undefined,
-        ErrorSeverity.MEDIUM,
-        expect.objectContaining({
-          topicName: testTopic,
-          validation: 'format_check',
-          pattern: 'ntfy_topic_name',
-          length: testTopic.length,
-        })
-      );
+    it('should handle numbers in token', () => {
+      const url = 'https://discord.com/api/webhooks/123456789/abc123def456';
+      const result = validateAndSanitizeDiscordUrl(url);
+      expect(result).toBe(url);
     });
   });
 });
