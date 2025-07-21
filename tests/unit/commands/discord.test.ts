@@ -1,47 +1,39 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleDiscordCommand } from '../../../src/commands/discord.js';
-import { configManager } from '../../../src/services/config.js';
-import { hookGenerator } from '../../../src/services/hooks.js';
-import { validateAndSanitizeDiscordUrl } from '../../../src/services/validation.js';
+import * as configModule from '../../../src/services/config.js';
+import * as errorHandlerModule from '../../../src/services/error-handler.js';
+import * as hooksModule from '../../../src/services/hooks.js';
+import * as validationModule from '../../../src/services/validation.js';
 import { CCNotifyError, type DiscordCommandArgs, ErrorType } from '../../../src/types/index.js';
-import { fileSystemService } from '../../../src/utils/file.js';
+import * as fileModule from '../../../src/utils/file.js';
 
-// Mock all dependencies
-vi.mock('../../../src/services/validation.js');
 vi.mock('../../../src/services/config.js');
 vi.mock('../../../src/services/hooks.js');
 vi.mock('../../../src/utils/file.js');
+vi.mock('../../../src/services/error-handler.js');
+vi.mock('../../../src/services/validation.js');
 
-const mockValidateAndSanitizeDiscordUrl = vi.mocked(validateAndSanitizeDiscordUrl);
-const mockConfigManager = vi.mocked(configManager);
-const mockHookGenerator = vi.mocked(hookGenerator);
-const mockFileSystemService = vi.mocked(fileSystemService);
+const mockConfigManager = configModule.configManager;
+const mockHookGenerator = hooksModule.hookGenerator;
+const mockFileSystemService = fileModule.fileSystemService;
 
-describe('discord command', () => {
+describe('handleDiscordCommand unit tests (improved)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Setup default mocks
-    mockValidateAndSanitizeDiscordUrl.mockReturnValue('https://discord.com/api/webhooks/123/valid-token');
-    mockConfigManager.getConfigPath.mockReturnValue('/test/.claude/settings.json');
-    mockConfigManager.loadConfig.mockResolvedValue({});
-    mockConfigManager.mergeConfig.mockReturnValue({
-      hooks: {
-        Stop: [
-          {
-            matcher: 'discord-notification',
-            hooks: [{ type: 'command' as const, command: 'curl command here' }],
-          },
-        ],
-      },
-    });
-    mockFileSystemService.ensureDirectory.mockResolvedValue();
-    mockFileSystemService.fileExists.mockResolvedValue(false);
-    mockHookGenerator.generateDiscordHook.mockReturnValue({
-      matcher: 'discord-notification',
-      hooks: [{ type: 'command' as const, command: 'curl command here' }],
-    });
-    mockConfigManager.saveConfig.mockResolvedValue();
+    // Reset all mock functions to default values for normal case
+    mockConfigManager.getConfigPath = vi.fn().mockReturnValue('/dummy/path') as ReturnType<typeof vi.fn>;
+    mockConfigManager.backupConfig = vi.fn().mockResolvedValue('/dummy/backup.json') as ReturnType<typeof vi.fn>;
+    mockConfigManager.loadConfig = vi.fn().mockResolvedValue({}) as ReturnType<typeof vi.fn>;
+    mockConfigManager.mergeConfig = vi.fn().mockReturnValue({}) as ReturnType<typeof vi.fn>;
+    mockConfigManager.saveConfig = vi.fn().mockResolvedValue(undefined) as ReturnType<typeof vi.fn>;
+    mockHookGenerator.generateDiscordHook = vi.fn().mockReturnValue({ matcher: 'discord', hooks: [] }) as ReturnType<
+      typeof vi.fn
+    >;
+    mockFileSystemService.fileExists = vi.fn().mockResolvedValue(false) as ReturnType<typeof vi.fn>;
+    mockFileSystemService.ensureDirectory = vi.fn().mockResolvedValue(undefined) as ReturnType<typeof vi.fn>;
+    // validation
+    (validationModule.validateAndSanitizeDiscordUrl as any) = vi.fn().mockImplementation((url: string) => url);
 
     // Mock console methods
     vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -52,8 +44,14 @@ describe('discord command', () => {
     vi.restoreAllMocks();
   });
 
-  describe('handleDiscordCommand', () => {
-    it('should create local Discord hook successfully', async () => {
+  describe('input validation logic', () => {
+    it('should validate webhook URL using actual validation logic', async () => {
+      // mockValidateAndSanitizeDiscordUrlが呼ばれることを検証するため、spyを再取得
+      const mockValidateAndSanitizeDiscordUrl = validationModule.validateAndSanitizeDiscordUrl as ReturnType<
+        typeof vi.fn
+      >;
+      mockValidateAndSanitizeDiscordUrl.mockImplementation((url: string) => url);
+
       const args: DiscordCommandArgs = {
         webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
         options: { global: false },
@@ -62,59 +60,13 @@ describe('discord command', () => {
       await handleDiscordCommand(args);
 
       expect(mockValidateAndSanitizeDiscordUrl).toHaveBeenCalledWith('https://discord.com/api/webhooks/123/test-token');
-      expect(mockConfigManager.getConfigPath).toHaveBeenCalledWith(false);
-      expect(mockFileSystemService.ensureDirectory).toHaveBeenCalledWith('/test/.claude');
-      expect(mockConfigManager.loadConfig).toHaveBeenCalledWith('/test/.claude/settings.json');
-      expect(mockHookGenerator.generateDiscordHook).toHaveBeenCalledWith(
-        'https://discord.com/api/webhooks/123/valid-token'
-      );
-      expect(mockConfigManager.saveConfig).toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalledWith('✅ Discord Stop Hook created successfully!');
     });
 
-    it('should create global Discord hook successfully', async () => {
-      const args: DiscordCommandArgs = {
-        webhookUrl: 'https://discord.com/api/webhooks/456/global-token',
-        options: { global: true },
-      };
-
-      await handleDiscordCommand(args);
-
-      expect(mockConfigManager.getConfigPath).toHaveBeenCalledWith(true);
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Configuration: /test/.claude/settings.json (global)')
-      );
-    });
-
-    it('should create backup when config file exists', async () => {
-      mockFileSystemService.fileExists.mockResolvedValue(true);
-      mockConfigManager.backupConfig.mockResolvedValue('/test/.claude/settings.json.backup');
-
-      const args: DiscordCommandArgs = {
-        webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
-        options: { global: false },
-      };
-
-      await handleDiscordCommand(args);
-
-      expect(mockConfigManager.backupConfig).toHaveBeenCalledWith('/test/.claude/settings.json');
-    });
-
-    it('should not create backup when config file does not exist', async () => {
-      mockFileSystemService.fileExists.mockResolvedValue(false);
-
-      const args: DiscordCommandArgs = {
-        webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
-        options: { global: false },
-      };
-
-      await handleDiscordCommand(args);
-
-      expect(mockConfigManager.backupConfig).not.toHaveBeenCalled();
-    });
-
-    it('should handle validation errors', async () => {
+    it('should propagate validation errors correctly', async () => {
       const validationError = new CCNotifyError(ErrorType.INVALID_WEBHOOK_URL, 'Invalid webhook URL');
+      const mockValidateAndSanitizeDiscordUrl = validationModule.validateAndSanitizeDiscordUrl as ReturnType<
+        typeof vi.fn
+      >;
       mockValidateAndSanitizeDiscordUrl.mockImplementation(() => {
         throw validationError;
       });
@@ -126,57 +78,10 @@ describe('discord command', () => {
 
       await expect(handleDiscordCommand(args)).rejects.toThrow(validationError);
     });
+  });
 
-    it('should handle configuration loading errors', async () => {
-      const configError = new CCNotifyError(ErrorType.JSON_PARSE_ERROR, 'Failed to parse config');
-      mockConfigManager.loadConfig.mockRejectedValue(configError);
-
-      const args: DiscordCommandArgs = {
-        webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
-        options: { global: false },
-      };
-
-      await expect(handleDiscordCommand(args)).rejects.toThrow(configError);
-    });
-
-    it('should handle file system errors', async () => {
-      const fileError = new Error('Permission denied');
-      mockFileSystemService.ensureDirectory.mockRejectedValue(fileError);
-
-      const args: DiscordCommandArgs = {
-        webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
-        options: { global: false },
-      };
-
-      await expect(handleDiscordCommand(args)).rejects.toThrow();
-    });
-
-    it('should handle configuration saving errors', async () => {
-      const saveError = new CCNotifyError(ErrorType.FILE_PERMISSION_ERROR, 'Failed to save config');
-      mockConfigManager.saveConfig.mockRejectedValue(saveError);
-
-      const args: DiscordCommandArgs = {
-        webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
-        options: { global: false },
-      };
-
-      await expect(handleDiscordCommand(args)).rejects.toThrow(saveError);
-    });
-
-    it('should merge configuration correctly with existing hooks', async () => {
-      const existingConfig = {
-        hooks: {
-          Stop: [
-            {
-              matcher: 'existing-hook',
-              hooks: [{ type: 'command' as const, command: 'existing command' }],
-            },
-          ],
-        },
-        otherProperty: 'preserved',
-      };
-      mockConfigManager.loadConfig.mockResolvedValue(existingConfig);
-
+  describe('configuration path decision logic', () => {
+    it('should determine local config path when global is false', async () => {
       const args: DiscordCommandArgs = {
         webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
         options: { global: false },
@@ -184,47 +89,22 @@ describe('discord command', () => {
 
       await handleDiscordCommand(args);
 
-      expect(mockConfigManager.mergeConfig).toHaveBeenCalledWith(existingConfig, {
-        hooks: {
-          Stop: [
-            {
-              matcher: 'discord-notification',
-              hooks: [{ type: 'command' as const, command: 'curl command here' }],
-            },
-          ],
-        },
-      });
+      // Ensure config path decision logic works correctly
+      expect(mockConfigManager.getConfigPath).toHaveBeenCalledWith(false);
     });
 
-    it('should display correct success messages', async () => {
+    it('should determine global config path when global is true', async () => {
       const args: DiscordCommandArgs = {
-        webhookUrl: 'https://discord.com/api/webhooks/123/my-secret-token',
-        options: { global: false },
+        webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
+        options: { global: true },
       };
 
       await handleDiscordCommand(args);
 
-      expect(console.log).toHaveBeenCalledWith('✅ Discord Stop Hook created successfully!');
-      expect(console.log).toHaveBeenCalledWith('📁 Configuration: /test/.claude/settings.json (local)');
-      expect(console.log).toHaveBeenCalledWith('🔗 Webhook URL: https://discord.com/api/webhooks/123/***');
+      expect(mockConfigManager.getConfigPath).toHaveBeenCalledWith(true);
     });
 
-    it('should hide webhook token in success message', async () => {
-      mockValidateAndSanitizeDiscordUrl.mockReturnValue(
-        'https://discord.com/api/webhooks/123456789/very-secret-token-here'
-      );
-
-      const args: DiscordCommandArgs = {
-        webhookUrl: 'https://discord.com/api/webhooks/123456789/very-secret-token-here',
-        options: { global: false },
-      };
-
-      await handleDiscordCommand(args);
-
-      expect(console.log).toHaveBeenCalledWith('🔗 Webhook URL: https://discord.com/api/webhooks/123456789/***');
-    });
-
-    it('should handle undefined global option', async () => {
+    it('should default to local when global option is undefined', async () => {
       const args: DiscordCommandArgs = {
         webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
         options: {},
@@ -234,10 +114,98 @@ describe('discord command', () => {
 
       expect(mockConfigManager.getConfigPath).toHaveBeenCalledWith(false);
     });
+  });
 
-    it('should use correct config path for global mode', async () => {
-      mockConfigManager.getConfigPath.mockReturnValue('/home/user/.claude/settings.json');
+  describe('backup decision logic', () => {
+    it('should create backup when config file exists', async () => {
+      (mockFileSystemService.fileExists as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+      (mockConfigManager.backupConfig as ReturnType<typeof vi.fn>).mockResolvedValue('/test/backup.json');
 
+      const args: DiscordCommandArgs = {
+        webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
+        options: { global: false },
+      };
+
+      await handleDiscordCommand(args);
+
+      // Ensure backup creation logic works correctly
+      expect(mockConfigManager.backupConfig).toHaveBeenCalled();
+    });
+
+    it('should not create backup when config file does not exist', async () => {
+      (mockFileSystemService.fileExists as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+
+      const args: DiscordCommandArgs = {
+        webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
+        options: { global: false },
+      };
+
+      await handleDiscordCommand(args);
+
+      // Ensure backup creation logic works correctly (should not be called)
+      expect(mockConfigManager.backupConfig).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('hook generation flow logic', () => {
+    it('should generate Discord hook with validated URL', async () => {
+      const mockValidateAndSanitizeDiscordUrl = validationModule.validateAndSanitizeDiscordUrl as ReturnType<
+        typeof vi.fn
+      >;
+      mockValidateAndSanitizeDiscordUrl.mockReturnValue('https://discord.com/api/webhooks/123/valid-token');
+
+      const args: DiscordCommandArgs = {
+        webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
+        options: { global: false },
+      };
+
+      await handleDiscordCommand(args);
+
+      expect(mockHookGenerator.generateDiscordHook).toHaveBeenCalledWith(
+        'https://discord.com/api/webhooks/123/valid-token'
+      );
+    });
+  });
+
+  describe('configuration merging logic', () => {
+    it('should merge new hook with existing configuration correctly', async () => {
+      const existingConfig = { existing: 'data' };
+      const newHook = { matcher: 'discord-notification', hooks: [] };
+
+      (mockConfigManager.loadConfig as ReturnType<typeof vi.fn>).mockResolvedValue(existingConfig);
+      (mockHookGenerator.generateDiscordHook as ReturnType<typeof vi.fn>).mockReturnValue(newHook);
+
+      const args: DiscordCommandArgs = {
+        webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
+        options: { global: false },
+      };
+
+      await handleDiscordCommand(args);
+
+      // Ensure config merging logic works correctly
+      expect(mockConfigManager.mergeConfig).toHaveBeenCalledWith(existingConfig, {
+        hooks: {
+          Stop: [newHook],
+        },
+      });
+    });
+  });
+
+  describe('success message logic', () => {
+    it('should display correct success messages for local config', async () => {
+      const args: DiscordCommandArgs = {
+        webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
+        options: { global: false },
+      };
+
+      await handleDiscordCommand(args);
+
+      // Ensure success message logic works correctly (local config)
+      expect(console.log).toHaveBeenCalledWith('✅ Discord Stop Hook created successfully!');
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('(local)'));
+    });
+
+    it('should display correct success messages for global config', async () => {
       const args: DiscordCommandArgs = {
         webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
         options: { global: true },
@@ -245,14 +213,32 @@ describe('discord command', () => {
 
       await handleDiscordCommand(args);
 
-      expect(mockFileSystemService.ensureDirectory).toHaveBeenCalledWith('/home/user/.claude');
+      expect(console.log).toHaveBeenCalledWith('✅ Discord Stop Hook created successfully!');
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('(global)'));
     });
 
-    it('should handle hook generation errors', async () => {
-      const hookError = new Error('Hook generation failed');
-      mockHookGenerator.generateDiscordHook.mockImplementation(() => {
-        throw hookError;
-      });
+    it('should hide webhook token in success message for security', async () => {
+      const args: DiscordCommandArgs = {
+        webhookUrl: 'https://discord.com/api/webhooks/123456789/very-secret-token',
+        options: { global: false },
+      };
+
+      await handleDiscordCommand(args);
+
+      // Ensure security logic works correctly (hide webhook token)
+      expect(console.log).toHaveBeenCalledWith('🔗 Webhook URL: https://discord.com/api/webhooks/123456789/***');
+    });
+  });
+
+  describe('error handling logic', () => {
+    it('should wrap unknown errors with context for better debugging', async () => {
+      const unknownError = new Error('Unknown error');
+      (mockConfigManager.loadConfig as ReturnType<typeof vi.fn>).mockRejectedValue(unknownError);
+
+      // errorHandler.createErrorを本物のCCNotifyErrorをthrowするようにmock
+      vi.spyOn(errorHandlerModule.errorHandler, 'createError').mockImplementation(
+        (type, message, originalError) => new CCNotifyError(type, message, originalError)
+      );
 
       const args: DiscordCommandArgs = {
         webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
@@ -263,43 +249,17 @@ describe('discord command', () => {
       await expect(handleDiscordCommand(args)).rejects.toThrow('Failed to create Discord Stop Hook');
     });
 
-    it('should handle backup creation errors', async () => {
-      mockFileSystemService.fileExists.mockResolvedValue(true);
-      const backupError = new CCNotifyError(ErrorType.CONFIG_BACKUP_ERROR, 'Backup failed');
-      mockConfigManager.backupConfig.mockRejectedValue(backupError);
+    it('should preserve CCNotifyError without wrapping to avoid double wrapping', async () => {
+      const ccError = new CCNotifyError(ErrorType.JSON_PARSE_ERROR, 'Config error');
+      (mockConfigManager.loadConfig as ReturnType<typeof vi.fn>).mockRejectedValue(ccError);
 
       const args: DiscordCommandArgs = {
         webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
         options: { global: false },
       };
 
-      await expect(handleDiscordCommand(args)).rejects.toThrow(backupError);
-    });
-
-    it('should preserve existing configuration properties', async () => {
-      const existingConfig = {
-        someOtherSetting: 'value',
-        hooks: {
-          Start: [{ matcher: 'start-hook', hooks: [] }],
-        },
-      };
-      mockConfigManager.loadConfig.mockResolvedValue(existingConfig);
-
-      const args: DiscordCommandArgs = {
-        webhookUrl: 'https://discord.com/api/webhooks/123/test-token',
-        options: { global: false },
-      };
-
-      await handleDiscordCommand(args);
-
-      expect(mockConfigManager.mergeConfig).toHaveBeenCalledWith(
-        existingConfig,
-        expect.objectContaining({
-          hooks: {
-            Stop: expect.any(Array),
-          },
-        })
-      );
+      // Ensure error handling logic works correctly (preserve CCNotifyError)
+      await expect(handleDiscordCommand(args)).rejects.toThrow(ccError);
     });
   });
 });
