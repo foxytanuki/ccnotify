@@ -42,18 +42,23 @@ jobs:
       - name: Build
         run: pnpm run build
 
-      - name: Set version from input
-        if: github.event_name == 'workflow_dispatch'
+      - name: Get release version
         run: |
-          npm version ${{ github.event.inputs.version }} --no-git-tag-version
-          echo "RELEASE_VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
-
-      - name: Set version from tag
-        if: github.event_name == 'push'
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          npm version $VERSION --no-git-tag-version
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=${GITHUB_REF#refs/tags/v}
+          fi
           echo "RELEASE_VERSION=$VERSION" >> $GITHUB_ENV
+          
+      - name: Verify version consistency
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          if [ "$PACKAGE_VERSION" != "$RELEASE_VERSION" ]; then
+            echo "Error: package.json version ($PACKAGE_VERSION) does not match release version ($RELEASE_VERSION)"
+            echo "Please update package.json version before creating a release tag"
+            exit 1
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -63,6 +68,8 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+        env:
+          RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
 
       - name: Publish to npm
         run: npm publish
