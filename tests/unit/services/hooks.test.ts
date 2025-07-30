@@ -82,7 +82,9 @@ describe('HookGeneratorImpl', () => {
       await hookGenerator.generateDiscordHook(webhookUrl);
 
       const [, scriptContent] = mockFileSystemService.writeFile.mock.calls[0];
-      expect(scriptContent).toContain(webhookUrl);
+      expect(scriptContent).toContain(`DEFAULT_WEBHOOK_URL="${webhookUrl}"`);
+      expect(scriptContent).toContain('WEBHOOK_URL="${1:-$DEFAULT_WEBHOOK_URL}"');
+      expect(scriptContent).toContain('# Usage: discord-notification.sh [webhook_url]');
     });
 
     it('should include transcript processing logic in script', async () => {
@@ -161,6 +163,9 @@ describe('HookGeneratorImpl', () => {
 
       const [, scriptContent] = mockFileSystemService.writeFile.mock.calls[0];
       expect(scriptContent).toContain(`DEFAULT_TOPIC_NAME="${topicName}"`);
+      expect(scriptContent).toContain('# Usage: ntfy-notification.sh [topic_name]');
+      expect(scriptContent).toContain('if [ -n "$1" ]; then');
+      expect(scriptContent).toContain('TOPIC_NAME="$1"');
     });
 
     it('should include transcript processing logic in script', async () => {
@@ -176,7 +181,7 @@ describe('HookGeneratorImpl', () => {
   });
 
   describe('generateMacOSHook', () => {
-    it('should generate macOS hook configuration with correct structure', async () => {
+    it('should generate macOS hook configuration without title argument when not provided', async () => {
       const result = await hookGenerator.generateMacOSHook();
 
       expect(result).toEqual({
@@ -243,13 +248,20 @@ describe('HookGeneratorImpl', () => {
       expect(scriptContent).toContain('" &');
     });
 
-    it('should handle custom title in script', async () => {
+    it('should include title argument in command when provided', async () => {
       const customTitle = 'Custom Notification Title';
 
-      await hookGenerator.generateMacOSHook(customTitle);
+      const result = await hookGenerator.generateMacOSHook(customTitle);
+
+      expect(result.hooks[0].command).toBe(`/home/user/.local/share/ccnotify/macos-notification.sh "${customTitle}"`);
+    });
+
+    it('should always use Claude Code as default in script', async () => {
+      await hookGenerator.generateMacOSHook('Some Title');
 
       const [, scriptContent] = mockFileSystemService.writeFile.mock.calls[0];
-      expect(scriptContent).toContain(`MAIN_TITLE="${customTitle}"`);
+      expect(scriptContent).toContain('DEFAULT_TITLE="Claude Code"');
+      expect(scriptContent).toContain('MAIN_TITLE="${1:-$DEFAULT_TITLE}"');
     });
   });
 

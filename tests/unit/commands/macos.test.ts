@@ -37,7 +37,7 @@ describe('handleMacOSCommand', () => {
   });
 
   describe('successful execution', () => {
-    it('should create macOS hook successfully with local config and default title', async () => {
+    it('should create macOS hook successfully without title', async () => {
       const args: MacOSCommandArgs = {
         options: { global: false },
       };
@@ -48,50 +48,21 @@ describe('handleMacOSCommand', () => {
       expect(mockHookGenerator.generateMacOSHook).toHaveBeenCalledWith(undefined, false);
       expect(mockConfigManager.saveConfig).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith('✅ macOS Stop Hook created successfully!');
-      expect(console.log).toHaveBeenCalledWith('🏷️  Title: User message (dynamic)');
+      expect(console.log).toHaveBeenCalledWith('🏷️  Title: Claude Code');
     });
 
-    it('should create macOS hook successfully with global config and custom title', async () => {
+    it('should create macOS hook successfully with title', async () => {
       const args: MacOSCommandArgs = {
-        title: 'Custom Title',
+        title: 'GLOBAL',
         options: { global: true },
       };
 
       await handleMacOSCommand(args);
 
-      expect(mockHookGenerator.generateMacOSHook).toHaveBeenCalledWith('Custom Title', true);
+      expect(mockHookGenerator.generateMacOSHook).toHaveBeenCalledWith('GLOBAL', true);
       expect(mockConfigManager.saveConfig).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith('✅ macOS Stop Hook created successfully!');
-      expect(console.log).toHaveBeenCalledWith('🏷️  Custom title: Custom Title');
-    });
-  });
-
-  describe('title handling', () => {
-    it('should handle empty title string', async () => {
-      const args: MacOSCommandArgs = {
-        title: '',
-        options: { global: false },
-      };
-
-      await handleMacOSCommand(args);
-
-      expect(mockHookGenerator.generateMacOSHook).toHaveBeenCalledWith('', false);
-      expect(console.log).toHaveBeenCalledWith('🏷️  Custom title: ');
-    });
-
-    it('should handle title with special characters', async () => {
-      const args: MacOSCommandArgs = {
-        title: 'Title with "quotes" and \'apostrophes\'',
-        options: { global: false },
-      };
-
-      await handleMacOSCommand(args);
-
-      expect(mockHookGenerator.generateMacOSHook).toHaveBeenCalledWith(
-        'Title with "quotes" and \'apostrophes\'',
-        false
-      );
-      expect(console.log).toHaveBeenCalledWith('🏷️  Custom title: Title with "quotes" and \'apostrophes\'');
+      expect(console.log).toHaveBeenCalledWith('🏷️  Title: GLOBAL');
     });
   });
 

@@ -14,7 +14,7 @@ export function registerMacOSCommand(program: Command): void {
   program
     .command('macos')
     .description('Create macOS notification Stop Hook')
-    .argument('[title]', 'Optional custom title for notifications (defaults to user message)')
+    .argument('[title]', 'Optional title for notifications')
     .option('-g, --global', 'Create global configuration in ~/.claude/')
     .action(async (title: string | undefined, options: { global?: boolean }) => {
       try {
@@ -93,10 +93,10 @@ export async function handleMacOSCommand(args: MacOSCommandArgs): Promise<void> 
     console.log(`✅ macOS Stop Hook created successfully!`);
     console.log(`📁 Configuration: ${configPath} (${configType})`);
     console.log(`📜 Script: ${scriptPath}`);
-    if (args.title !== undefined) {
-      console.log(`🏷️  Custom title: ${args.title}`);
+    if (args.title) {
+      console.log(`🏷️  Title: ${args.title}`);
     } else {
-      console.log(`🏷️  Title: User message (dynamic)`);
+      console.log(`🏷️  Title: Claude Code`);
     }
 
     await errorHandler.logInfo('macOS Stop Hook created successfully', {

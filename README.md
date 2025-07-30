@@ -121,11 +121,11 @@ ccnotify ntfy my-topic-name
 Create a macOS native notification hook:
 
 ```bash
-# Use default title (user message)
+# Use default title (script will use "Claude Code")
 ccnotify macos
 
 # Use custom title
-ccnotify macos "Claude Code Completed"
+ccnotify macos "My Custom Title"
 ```
 
 #### Notification Logging
@@ -216,6 +216,46 @@ The tool creates Stop Hooks in your Claude configuration file and generates exec
     ]
   }
 }
+```
+
+### Dynamic Configuration
+
+All generated scripts support dynamic configuration through command arguments:
+
+#### Discord
+```bash
+# Use default webhook URL embedded in script
+/path/to/discord-notification.sh
+
+# Override webhook URL dynamically
+/path/to/discord-notification.sh "https://discord.com/api/webhooks/123/abc"
+
+# In Claude settings.json
+"command": "/path/to/discord-notification.sh https://discord.com/api/webhooks/123/abc"
+```
+
+#### ntfy
+```bash
+# Use default topic embedded in script
+/path/to/ntfy-notification.sh
+
+# Override topic dynamically
+/path/to/ntfy-notification.sh "my-custom-topic"
+
+# Also supports NTFY_TOPIC environment variable
+NTFY_TOPIC="my-topic" /path/to/ntfy-notification.sh
+```
+
+#### macOS
+```bash
+# Use default title embedded in script
+/path/to/macos-notification.sh
+
+# Override title dynamically
+/path/to/macos-notification.sh "Custom Title"
+
+# In Claude settings.json
+"command": "/path/to/macos-notification.sh \"My Custom Title\""
 ```
 
 #### XDG Base Directory Support

@@ -76,15 +76,18 @@ export class HookGeneratorImpl implements HookGenerator {
     // Ensure ccnotify data directory exists
     await pathResolver.ensureCcnotifyDataDir();
 
-    // Create the script file
-    await this.createMacOSScript(title, scriptPath);
+    // Create the script file (always with "Claude Code" as default)
+    await this.createMacOSScript(undefined, scriptPath);
+
+    // Include title argument only if provided
+    const command = title ? `${scriptPath} "${title}"` : scriptPath;
 
     return {
       matcher: 'macos-notification',
       hooks: [
         {
           type: 'command',
-          command: scriptPath,
+          command,
         },
       ],
     };
@@ -274,6 +277,9 @@ export class HookGeneratorImpl implements HookGenerator {
   private generateDiscordScriptContent(webhookUrl: string): string {
     return `#!/bin/bash
 # Process transcript and send to Discord with logging
+# Usage: discord-notification.sh [webhook_url]
+# If webhook_url is provided as argument, it overrides the default
+
 TRANSCRIPT=$(jq -r .transcript_path)
 XDG_DATA_HOME="\${XDG_DATA_HOME:-\$HOME/.local/share}"
 LOG_FILE="\$XDG_DATA_HOME/ccnotify/notifications.log"
@@ -289,6 +295,13 @@ log_notification() {
   local details="$3"
   echo "{\\"timestamp\\":\\"\$(date -u +%Y-%m-%dT%H:%M:%S.000Z)\\",\\"level\\":\\"$level\\",\\"type\\":\\"discord\\",\\"message\\":\\"$message\\",\\"details\\":$details}" >> "$LOG_FILE"
 }
+
+# Get webhook URL from argument or use default
+DEFAULT_WEBHOOK_URL="${webhookUrl}"
+WEBHOOK_URL="\${1:-$DEFAULT_WEBHOOK_URL}"
+
+# Mask webhook URL for logging
+MASKED_WEBHOOK_URL=$(echo "$WEBHOOK_URL" | sed 's/\\/[^/]*$/\\/***/')
 
 # Get latest assistant message
 LATEST_MSG=$(tail -1 "$TRANSCRIPT" | jq -r '.message.content[0].text // empty')
@@ -313,7 +326,7 @@ done < "$TEMP_FILE"
 rm -f "$TEMP_FILE"
 
 # Log notification start
-log_notification "INFO" "Starting discord notification" "{\\"webhookUrl\\":\\"${webhookUrl.replace(/\/[\w-]+$/, '/***')}\\",\\"transcriptPath\\":\\"$TRANSCRIPT\\"}"
+log_notification "INFO" "Starting discord notification" "{\\"webhookUrl\\":\\"\$MASKED_WEBHOOK_URL\\",\\"transcriptPath\\":\\"$TRANSCRIPT\\"}"
 
 # Format message for Discord
 if [ -n "$LATEST_MSG" ]; then
@@ -340,7 +353,7 @@ EOF
   
   # Send to Discord webhook with timeout and logging
   START_TIME=$(date +%s)
-  RESPONSE=$(curl -s -w "\\n%{http_code}" --max-time 30 -H "Content-Type: application/json" -d "$DISCORD_PAYLOAD" "${webhookUrl}" 2>&1)
+  RESPONSE=$(curl -s -w "\\n%{http_code}" --max-time 30 -H "Content-Type: application/json" -d "$DISCORD_PAYLOAD" "$WEBHOOK_URL" 2>&1)
   END_TIME=$(date +%s)
   EXECUTION_TIME=$((END_TIME - START_TIME))
   
@@ -349,12 +362,12 @@ EOF
   RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
   
   if [ "$HTTP_CODE" = "204" ]; then
-    log_notification "INFO" "Discord notification sent successfully" "{\\"webhookUrl\\":\\"${webhookUrl.replace(/\/[\w-]+$/, '/***')}\\",\\"responseCode\\":$HTTP_CODE,\\"executionTime\\":$EXECUTION_TIME}"
+    log_notification "INFO" "Discord notification sent successfully" "{\\"webhookUrl\\":\\"\$MASKED_WEBHOOK_URL\\",\\"responseCode\\":$HTTP_CODE,\\"executionTime\\":$EXECUTION_TIME}"
   else
-    log_notification "ERROR" "Discord notification failed" "{\\"webhookUrl\\":\\"${webhookUrl.replace(/\/[\w-]+$/, '/***')}\\",\\"responseCode\\":$HTTP_CODE,\\"responseBody\\":\\"$RESPONSE_BODY\\",\\"executionTime\\":$EXECUTION_TIME,\\"error\\":\\"HTTP $HTTP_CODE\\"}"
+    log_notification "ERROR" "Discord notification failed" "{\\"webhookUrl\\":\\"\$MASKED_WEBHOOK_URL\\",\\"responseCode\\":$HTTP_CODE,\\"responseBody\\":\\"$RESPONSE_BODY\\",\\"executionTime\\":$EXECUTION_TIME,\\"error\\":\\"HTTP $HTTP_CODE\\"}"
   fi
 else
-  log_notification "DEBUG" "Discord notification skipped" "{\\"webhookUrl\\":\\"${webhookUrl.replace(/\/[\w-]+$/, '/***')}\\",\\"reason\\":\\"No assistant message found\\"}"
+  log_notification "DEBUG" "Discord notification skipped" "{\\"webhookUrl\\":\\"\$MASKED_WEBHOOK_URL\\",\\"reason\\":\\"No assistant message found\\"}"
 fi`;
   }
 
@@ -364,6 +377,10 @@ fi`;
   private generateNtfyScriptContent(topicName: string): string {
     return `#!/bin/bash
 # Process transcript and send to ntfy with logging
+# Usage: ntfy-notification.sh [topic_name]
+# If topic_name is provided as argument, it overrides the default
+# Can also use NTFY_TOPIC environment variable
+
 TRANSCRIPT=$(jq -r .transcript_path)
 XDG_DATA_HOME="\${XDG_DATA_HOME:-\$HOME/.local/share}"
 LOG_FILE="\$XDG_DATA_HOME/ccnotify/notifications.log"
@@ -383,8 +400,14 @@ log_notification() {
 # Default topic name with unique identifier
 DEFAULT_TOPIC_NAME="${topicName}"
 
-# Configuration (use environment variable if set, otherwise use default)
-TOPIC_NAME="\${NTFY_TOPIC:-$DEFAULT_TOPIC_NAME}"
+# Configuration priority: command argument > environment variable > default
+if [ -n "\$1" ]; then
+  TOPIC_NAME="\$1"
+elif [ -n "\$NTFY_TOPIC" ]; then
+  TOPIC_NAME="\$NTFY_TOPIC"
+else
+  TOPIC_NAME="\$DEFAULT_TOPIC_NAME"
+fi
 
 # Get latest assistant message
 LATEST_MSG=$(tail -1 "$TRANSCRIPT" | jq -r '.message.content[0].text // empty')
@@ -436,12 +459,15 @@ fi`;
   /**
    * Generate macOS script content
    */
-  private generateMacOSScriptContent(title?: string): string {
-    // Generate the bash script with proper title handling
-    const mainTitleLogic = title ? `MAIN_TITLE="${title.replace(/"/g, '\\"')}"` : 'MAIN_TITLE="Claude Code"';
+  private generateMacOSScriptContent(_title?: string): string {
+    // Always use "Claude Code" as default
+    const defaultTitle = 'Claude Code';
 
     return `#!/bin/bash
 # Process transcript and send macOS notification with logging
+# Usage: macos-notification.sh [title]
+# If title is provided as argument, it overrides the default
+
 TRANSCRIPT=$(jq -r .transcript_path)
 XDG_DATA_HOME="\${XDG_DATA_HOME:-\$HOME/.local/share}"
 LOG_FILE="\$XDG_DATA_HOME/ccnotify/notifications.log"
@@ -457,6 +483,10 @@ log_notification() {
   local details="\$3"
   echo "{\\"timestamp\\":\\"\$(date -u +%Y-%m-%dT%H:%M:%S.000Z)\\",\\"level\\":\\"\$level\\",\\"type\\":\\"macos\\",\\"message\\":\\"\$message\\",\\"details\\":\$details}" >> "\$LOG_FILE"
 }
+
+# Get title from argument or use default
+DEFAULT_TITLE="${defaultTitle.replace(/"/g, '\\"')}"
+MAIN_TITLE="\${1:-\$DEFAULT_TITLE}"
 
 # Get latest assistant message
 LATEST_MSG=$(tail -1 "\$TRANSCRIPT" | jq -r '.message.content[0].text // empty')
@@ -482,13 +512,10 @@ done < "\$TEMP_FILE"
 rm -f "\$TEMP_FILE"
 
 # Log notification start
-log_notification "INFO" "Starting macOS notification" "{\\"title\\":\\"${title || 'Claude Code'}\\",\\"transcriptPath\\":\\"\$TRANSCRIPT\\"}"
+log_notification "INFO" "Starting macOS notification" "{\\"title\\":\\"\$MAIN_TITLE\\",\\"transcriptPath\\":\\"\$TRANSCRIPT\\"}"
 
 # Send notification only if assistant message is not empty
 if [ -n "\$LATEST_MSG" ]; then
-  # Set main notification title (custom title if provided, otherwise default "Claude Code")
-  ${mainTitleLogic}
-  
   # Use user message as subtitle (truncated to 256 chars for macOS limit)
   SUBTITLE="\${USER_MSG:0:256}"
   
@@ -516,7 +543,7 @@ if [ -n "\$LATEST_MSG" ]; then
     log_notification "ERROR" "macOS notification failed" "{\\"title\\":\\"\$MAIN_TITLE\\",\\"executionTime\\":\$EXECUTION_TIME,\\"error\\":\\"osascript command failed\\"}"
   fi
 else
-  log_notification "DEBUG" "macOS notification skipped" "{\\"title\\":\\"${title || 'Claude Code'}\\",\\"reason\\":\\"No assistant message found\\"}"
+  log_notification "DEBUG" "macOS notification skipped" "{\\"title\\":\\"\$MAIN_TITLE\\",\\"reason\\":\\"No assistant message found\\"}"
 fi`;
   }
 }
