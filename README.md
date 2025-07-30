@@ -455,6 +455,13 @@ For issues and questions:
 
 ## Changelog
 
+### v0.1.0
+- Add notification logging system with `logs` and `config` commands
+- Add XDG Base Directory support for script and log storage
+- Improve message handling with proper JSON encoding
+- Add comprehensive test coverage
+- Update Node.js requirement to v20.0.0+
+
 ### v0.0.3
 - Update docs
 
