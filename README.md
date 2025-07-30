@@ -455,6 +455,9 @@ For issues and questions:
 
 ## Changelog
 
+### v0.1.1
+- Fix CI
+
 ### v0.1.0
 - Add notification logging system with `logs` and `config` commands
 - Add XDG Base Directory support for script and log storage
