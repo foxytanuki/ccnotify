@@ -66,12 +66,22 @@ jobs:
           tag_name: v${{ env.RELEASE_VERSION }}
           name: Release v${{ env.RELEASE_VERSION }}
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(env.RELEASE_VERSION, '-') }}
           generate_release_notes: true
         env:
           RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
 
       - name: Publish to npm
-        run: npm publish
+        run: |
+          if [[ "$RELEASE_VERSION" == *"-"* ]]; then
+            # Extract prerelease tag (alpha, beta, rc, etc.)
+            PRERELEASE_TAG=$(echo "$RELEASE_VERSION" | sed -n 's/.*-\([a-zA-Z]*\).*/\1/p')
+            if [ -z "$PRERELEASE_TAG" ]; then
+              PRERELEASE_TAG="prerelease"
+            fi
+            npm publish --tag "$PRERELEASE_TAG"
+          else
+            npm publish
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
