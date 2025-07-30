@@ -94,7 +94,7 @@ describe('HookGeneratorImpl', () => {
 
       const [, scriptContent] = mockFileSystemService.writeFile.mock.calls[0];
       expect(scriptContent).toContain('TRANSCRIPT=$(jq -r .transcript_path)');
-      expect(scriptContent).toContain('LATEST_MSG=$(tail -1 "$TRANSCRIPT"');
+      expect(scriptContent).toContain('LATEST_MSG=$(grep \'"type":"assistant"\' "$TRANSCRIPT" | tail -1');
       expect(scriptContent).toContain('while IFS= read -r line; do');
     });
 
@@ -104,10 +104,10 @@ describe('HookGeneratorImpl', () => {
       await hookGenerator.generateDiscordHook(webhookUrl);
 
       const [, scriptContent] = mockFileSystemService.writeFile.mock.calls[0];
-      expect(scriptContent).toContain('FORMATTED_MSG=$(echo "$LATEST_MSG" | head -c 1800');
-      expect(scriptContent).toContain('"title": "Claude Code Operation Completed"');
-      expect(scriptContent).toContain('"embeds": [{');
-      expect(scriptContent).toContain('"color": 5814783');
+      expect(scriptContent).toContain('jq -n');
+      expect(scriptContent).toContain('--arg title "Claude Code Operation Completed"');
+      expect(scriptContent).toContain('embeds: [{');
+      expect(scriptContent).toContain('color: 5814783');
     });
 
     it('should make script executable on Unix-like systems', async () => {
@@ -175,7 +175,7 @@ describe('HookGeneratorImpl', () => {
 
       const [, scriptContent] = mockFileSystemService.writeFile.mock.calls[0];
       expect(scriptContent).toContain('TRANSCRIPT=$(jq -r .transcript_path)');
-      expect(scriptContent).toContain('LATEST_MSG=$(tail -1 "$TRANSCRIPT"');
+      expect(scriptContent).toContain('LATEST_MSG=$(grep \'"type":"assistant"\' "$TRANSCRIPT" | tail -1');
       expect(scriptContent).toContain('while IFS= read -r line; do');
     });
   });

@@ -304,7 +304,8 @@ WEBHOOK_URL="\${1:-$DEFAULT_WEBHOOK_URL}"
 MASKED_WEBHOOK_URL=$(echo "$WEBHOOK_URL" | sed 's/\\/[^/]*$/\\/***/')
 
 # Get latest assistant message
-LATEST_MSG=$(tail -1 "$TRANSCRIPT" | jq -r '.message.content[0].text // empty')
+# Look for the last line containing assistant type
+LATEST_MSG=$(grep '"type":"assistant"' "$TRANSCRIPT" | tail -1 | jq -r '.message.content[0].text // empty')
 
 # Get latest user message using a temporary file for portability
 USER_MSG=""
@@ -330,26 +331,29 @@ log_notification "INFO" "Starting discord notification" "{\\"webhookUrl\\":\\"\$
 
 # Format message for Discord
 if [ -n "$LATEST_MSG" ]; then
-  # Truncate and format the assistant message
-  FORMATTED_MSG=$(echo "$LATEST_MSG" | head -c 1800 | sed 's/"/\\\\"/g')
+  # Truncate messages
+  USER_MSG_TRUNCATED=$(echo "$USER_MSG" | head -c 200)
+  ASSISTANT_MSG_TRUNCATED=$(echo "$LATEST_MSG" | head -c 1000)
   
-  # Create Discord embed payload
-  DISCORD_PAYLOAD=$(cat <<EOF
-{
-  "embeds": [{
-    "title": "Claude Code Operation Completed",
-    "description": "\${USER_MSG:0:200}",
-    "color": 5814783,
-    "fields": [{
-      "name": "Assistant Response",
-      "value": "\${FORMATTED_MSG:0:1000}",
-      "inline": false
-    }],
-    "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
-  }]
-}
-EOF
-)
+  # Create Discord embed payload using jq for proper JSON encoding
+  DISCORD_PAYLOAD=$(jq -n \\
+    --arg title "Claude Code Operation Completed" \\
+    --arg desc "$USER_MSG_TRUNCATED" \\
+    --arg response "$ASSISTANT_MSG_TRUNCATED" \\
+    --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \\
+    '{
+      embeds: [{
+        title: $title,
+        description: $desc,
+        color: 5814783,
+        fields: [{
+          name: "Assistant Response",
+          value: $response,
+          inline: false
+        }],
+        timestamp: $timestamp
+      }]
+    }')
   
   # Send to Discord webhook with timeout and logging
   START_TIME=$(date +%s)
@@ -359,7 +363,8 @@ EOF
   
   # Extract response code and body
   HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-  RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+  # Get all lines except the last one (macOS compatible)
+  RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')
   
   if [ "$HTTP_CODE" = "204" ]; then
     log_notification "INFO" "Discord notification sent successfully" "{\\"webhookUrl\\":\\"\$MASKED_WEBHOOK_URL\\",\\"responseCode\\":$HTTP_CODE,\\"executionTime\\":$EXECUTION_TIME}"
@@ -410,7 +415,8 @@ else
 fi
 
 # Get latest assistant message
-LATEST_MSG=$(tail -1 "$TRANSCRIPT" | jq -r '.message.content[0].text // empty')
+# Look for the last line containing assistant type
+LATEST_MSG=$(grep '"type":"assistant"' "$TRANSCRIPT" | tail -1 | jq -r '.message.content[0].text // empty')
 
 # Get latest user message using a temporary file for portability
 USER_MSG=""
@@ -444,7 +450,8 @@ if [ -n "$LATEST_MSG" ]; then
   
   # Extract response code and body
   HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-  RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+  # Get all lines except the last one (macOS compatible)
+  RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')
   
   if [ "$HTTP_CODE" = "200" ]; then
     log_notification "INFO" "Ntfy notification sent successfully" "{\\"topicName\\":\\"$TOPIC_NAME\\",\\"responseCode\\":$HTTP_CODE,\\"executionTime\\":$EXECUTION_TIME}"
