@@ -6,6 +6,7 @@ import { hookGenerator } from '../services/hooks.js';
 import { validateAndSanitizeDiscordUrl } from '../services/validation.js';
 import { CCNotifyError, type DiscordCommandArgs, ErrorType } from '../types/index.js';
 import { fileSystemService } from '../utils/file.js';
+import { pathResolver } from '../utils/paths.js';
 
 /**
  * Register Discord command with commander
@@ -94,8 +95,10 @@ export async function handleDiscordCommand(args: DiscordCommandArgs): Promise<vo
 
     // Success message
     const configType = args.options.global ? 'global' : 'local';
+    const scriptPath = pathResolver.getScriptPath(args.options.global ?? false, 'discord-notification.sh');
     console.log(`✅ Discord Stop Hook created successfully!`);
     console.log(`📁 Configuration: ${configPath} (${configType})`);
+    console.log(`📜 Script: ${scriptPath}`);
     console.log(`🔗 Webhook URL: ${sanitizedWebhookUrl.replace(/\/[\w-]+$/, '/***')}`); // Hide token
 
     await errorHandler.logInfo('Discord Stop Hook created successfully', {

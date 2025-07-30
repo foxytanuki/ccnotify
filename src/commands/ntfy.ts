@@ -6,6 +6,7 @@ import { hookGenerator } from '../services/hooks.js';
 import { validateAndSanitizeNtfyTopic } from '../services/validation.js';
 import { CCNotifyError, ErrorType, type NtfyCommandArgs } from '../types/index.js';
 import { fileSystemService } from '../utils/file.js';
+import { pathResolver } from '../utils/paths.js';
 
 /**
  * Register ntfy command with commander
@@ -94,8 +95,10 @@ export async function handleNtfyCommand(args: NtfyCommandArgs): Promise<void> {
 
     // Success message
     const configType = args.options.global ? 'global' : 'local';
+    const scriptPath = pathResolver.getScriptPath(args.options.global ?? false, 'ntfy-notification.sh');
     console.log(`✅ ntfy Stop Hook created successfully!`);
     console.log(`📁 Configuration: ${configPath} (${configType})`);
+    console.log(`📜 Script: ${scriptPath}`);
     console.log(`📢 Topic: ${sanitizedTopicName}`);
 
     await errorHandler.logInfo('ntfy Stop Hook created successfully', {

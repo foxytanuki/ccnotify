@@ -5,6 +5,7 @@ import { errorHandler } from '../services/error-handler.js';
 import { hookGenerator } from '../services/hooks.js';
 import { CCNotifyError, ErrorType, type MacOSCommandArgs } from '../types/index.js';
 import { fileSystemService } from '../utils/file.js';
+import { pathResolver } from '../utils/paths.js';
 
 /**
  * Register macOS command with commander
@@ -88,8 +89,10 @@ export async function handleMacOSCommand(args: MacOSCommandArgs): Promise<void> 
 
     // Success message
     const configType = args.options.global ? 'global' : 'local';
+    const scriptPath = pathResolver.getScriptPath(args.options.global ?? false, 'macos-notification.sh');
     console.log(`✅ macOS Stop Hook created successfully!`);
     console.log(`📁 Configuration: ${configPath} (${configType})`);
+    console.log(`📜 Script: ${scriptPath}`);
     if (args.title !== undefined) {
       console.log(`🏷️  Custom title: ${args.title}`);
     } else {
