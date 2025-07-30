@@ -1,6 +1,7 @@
 import { dirname } from 'node:path';
 import { CCNotifyError, ErrorSeverity, ErrorType, type StopHook } from '../types/index.js';
 import { fileSystemService } from '../utils/file.js';
+import { pathResolver } from '../utils/paths.js';
 import { errorHandler } from './error-handler.js';
 import { NotificationType, notificationLogger } from './notification-logger.js';
 
@@ -8,10 +9,9 @@ import { NotificationType, notificationLogger } from './notification-logger.js';
  * Hook generator interface
  */
 export interface HookGenerator {
-  generateDiscordHook(webhookUrl: string): StopHook;
-  generateNtfyHook(topicName: string): StopHook;
-  generateMacOSHook(title?: string): StopHook;
-  createNtfyScript(topicName: string, scriptPath: string): Promise<void>;
+  generateDiscordHook(webhookUrl: string, isGlobal?: boolean): Promise<StopHook>;
+  generateNtfyHook(topicName: string, isGlobal?: boolean): Promise<StopHook>;
+  generateMacOSHook(title?: string, isGlobal?: boolean): Promise<StopHook>;
 }
 
 /**
@@ -21,15 +21,22 @@ export class HookGeneratorImpl implements HookGenerator {
   /**
    * Generate Discord webhook Stop Hook configuration
    */
-  generateDiscordHook(webhookUrl: string): StopHook {
-    const discordCommand = this.createDiscordCommand(webhookUrl);
+  async generateDiscordHook(webhookUrl: string, isGlobal: boolean = false): Promise<StopHook> {
+    const scriptName = 'discord-notification.sh';
+    const scriptPath = pathResolver.getScriptPath(isGlobal, scriptName);
+
+    // Ensure ccnotify data directory exists
+    await pathResolver.ensureCcnotifyDataDir();
+
+    // Create the script file
+    await this.createDiscordScript(webhookUrl, scriptPath);
 
     return {
       matcher: 'discord-notification',
       hooks: [
         {
           type: 'command',
-          command: discordCommand,
+          command: scriptPath,
         },
       ],
     };
@@ -38,15 +45,22 @@ export class HookGeneratorImpl implements HookGenerator {
   /**
    * Generate ntfy Stop Hook configuration
    */
-  generateNtfyHook(topicName: string): StopHook {
-    const ntfyCommand = this.createNtfyCommand(topicName);
+  async generateNtfyHook(topicName: string, isGlobal: boolean = false): Promise<StopHook> {
+    const scriptName = 'ntfy-notification.sh';
+    const scriptPath = pathResolver.getScriptPath(isGlobal, scriptName);
+
+    // Ensure ccnotify data directory exists
+    await pathResolver.ensureCcnotifyDataDir();
+
+    // Create the script file
+    await this.createNtfyScript(topicName, scriptPath);
 
     return {
       matcher: 'ntfy-notification',
       hooks: [
         {
           type: 'command',
-          command: ntfyCommand,
+          command: scriptPath,
         },
       ],
     };
@@ -55,24 +69,87 @@ export class HookGeneratorImpl implements HookGenerator {
   /**
    * Generate macOS notification Stop Hook configuration
    */
-  generateMacOSHook(title?: string): StopHook {
-    const macosCommand = this.createMacOSCommand(title);
+  async generateMacOSHook(title?: string, isGlobal: boolean = false): Promise<StopHook> {
+    const scriptName = 'macos-notification.sh';
+    const scriptPath = pathResolver.getScriptPath(isGlobal, scriptName);
+
+    // Ensure ccnotify data directory exists
+    await pathResolver.ensureCcnotifyDataDir();
+
+    // Create the script file
+    await this.createMacOSScript(title, scriptPath);
 
     return {
       matcher: 'macos-notification',
       hooks: [
         {
           type: 'command',
-          command: macosCommand,
+          command: scriptPath,
         },
       ],
     };
   }
 
   /**
-   * Create ntfy.sh script with transcript processing logic
+   * Create Discord notification script file
    */
-  async createNtfyScript(topicName: string, scriptPath: string): Promise<void> {
+  private async createDiscordScript(webhookUrl: string, scriptPath: string): Promise<void> {
+    try {
+      await errorHandler.logDebug('Creating Discord script', { scriptPath });
+
+      // Ensure the directory exists
+      const scriptDir = dirname(scriptPath);
+      try {
+        await fileSystemService.ensureDirectory(scriptDir);
+      } catch (error) {
+        throw errorHandler.wrapFileSystemError(error, 'create script directory', scriptDir);
+      }
+
+      // Generate the script content
+      const scriptContent = this.generateDiscordScriptContent(webhookUrl);
+
+      // Write the script file
+      try {
+        await fileSystemService.writeFile(scriptPath, scriptContent);
+      } catch (error) {
+        throw errorHandler.wrapFileSystemError(error, 'write script file', scriptPath);
+      }
+
+      // Make the script executable (Unix-like systems)
+      if (process.platform !== 'win32') {
+        try {
+          const { chmod } = await import('node:fs/promises');
+          await chmod(scriptPath, 0o755);
+          await errorHandler.logDebug('Discord script made executable');
+        } catch (error) {
+          // Log warning but don't fail - script can still work without execute permissions
+          await errorHandler.logWarning('Failed to make Discord script executable', {
+            scriptPath,
+            error: (error as Error).message,
+          });
+        }
+      }
+
+      await errorHandler.logDebug('Discord script created successfully');
+    } catch (error) {
+      if (error instanceof CCNotifyError) {
+        throw error;
+      }
+
+      throw errorHandler.createError(
+        ErrorType.SCRIPT_CREATION_ERROR,
+        `Failed to create Discord script at ${scriptPath}`,
+        error as Error,
+        ErrorSeverity.HIGH,
+        { webhookUrl: webhookUrl.replace(/\/[\w-]+$/, '/***'), scriptPath, operation: 'createDiscordScript' }
+      );
+    }
+  }
+
+  /**
+   * Create ntfy notification script file
+   */
+  private async createNtfyScript(topicName: string, scriptPath: string): Promise<void> {
     try {
       await errorHandler.logDebug('Creating ntfy script', { topicName, scriptPath });
 
@@ -99,10 +176,10 @@ export class HookGeneratorImpl implements HookGenerator {
         try {
           const { chmod } = await import('node:fs/promises');
           await chmod(scriptPath, 0o755);
-          await errorHandler.logDebug('Script made executable');
+          await errorHandler.logDebug('ntfy script made executable');
         } catch (error) {
           // Log warning but don't fail - script can still work without execute permissions
-          await errorHandler.logWarning('Failed to make script executable', {
+          await errorHandler.logWarning('Failed to make ntfy script executable', {
             scriptPath,
             error: (error as Error).message,
           });
@@ -126,11 +203,76 @@ export class HookGeneratorImpl implements HookGenerator {
   }
 
   /**
-   * Create Discord webhook command with transcript processing
+   * Create macOS notification script file
    */
-  private createDiscordCommand(webhookUrl: string): string {
-    // Create a command that processes the transcript and formats for Discord using portable shell syntax
-    const command = `#!/bin/bash
+  private async createMacOSScript(title?: string, scriptPath?: string): Promise<void> {
+    if (!scriptPath) {
+      throw errorHandler.createError(
+        ErrorType.SCRIPT_CREATION_ERROR,
+        'Script path is required for macOS script creation',
+        undefined,
+        ErrorSeverity.HIGH,
+        { title, operation: 'createMacOSScript' }
+      );
+    }
+
+    try {
+      await errorHandler.logDebug('Creating macOS script', { title, scriptPath });
+
+      // Ensure the directory exists
+      const scriptDir = dirname(scriptPath);
+      try {
+        await fileSystemService.ensureDirectory(scriptDir);
+      } catch (error) {
+        throw errorHandler.wrapFileSystemError(error, 'create script directory', scriptDir);
+      }
+
+      // Generate the script content
+      const scriptContent = this.generateMacOSScriptContent(title);
+
+      // Write the script file
+      try {
+        await fileSystemService.writeFile(scriptPath, scriptContent);
+      } catch (error) {
+        throw errorHandler.wrapFileSystemError(error, 'write script file', scriptPath);
+      }
+
+      // Make the script executable (Unix-like systems)
+      if (process.platform !== 'win32') {
+        try {
+          const { chmod } = await import('node:fs/promises');
+          await chmod(scriptPath, 0o755);
+          await errorHandler.logDebug('macOS script made executable');
+        } catch (error) {
+          // Log warning but don't fail - script can still work without execute permissions
+          await errorHandler.logWarning('Failed to make macOS script executable', {
+            scriptPath,
+            error: (error as Error).message,
+          });
+        }
+      }
+
+      await errorHandler.logDebug('macOS script created successfully');
+    } catch (error) {
+      if (error instanceof CCNotifyError) {
+        throw error;
+      }
+
+      throw errorHandler.createError(
+        ErrorType.SCRIPT_CREATION_ERROR,
+        `Failed to create macOS script at ${scriptPath}`,
+        error as Error,
+        ErrorSeverity.HIGH,
+        { title, scriptPath, operation: 'createMacOSScript' }
+      );
+    }
+  }
+
+  /**
+   * Generate Discord script content
+   */
+  private generateDiscordScriptContent(webhookUrl: string): string {
+    return `#!/bin/bash
 # Process transcript and send to Discord with logging
 TRANSCRIPT=$(jq -r .transcript_path)
 XDG_DATA_HOME="\${XDG_DATA_HOME:-\$HOME/.local/share}"
@@ -213,16 +355,14 @@ EOF
   fi
 else
   log_notification "DEBUG" "Discord notification skipped" "{\\"webhookUrl\\":\\"${webhookUrl.replace(/\/[\w-]+$/, '/***')}\\",\\"reason\\":\\"No assistant message found\\"}"
-fi`.trim();
-
-    return command;
+fi`;
   }
 
   /**
-   * Create ntfy command with embedded script content
+   * Generate ntfy script content
    */
-  private createNtfyCommand(topicName: string): string {
-    const command = `#!/bin/bash
+  private generateNtfyScriptContent(topicName: string): string {
+    return `#!/bin/bash
 # Process transcript and send to ntfy with logging
 TRANSCRIPT=$(jq -r .transcript_path)
 XDG_DATA_HOME="\${XDG_DATA_HOME:-\$HOME/.local/share}"
@@ -290,19 +430,17 @@ if [ -n "$LATEST_MSG" ]; then
   fi
 else
   log_notification "DEBUG" "Ntfy notification skipped" "{\\"topicName\\":\\"$TOPIC_NAME\\",\\"reason\\":\\"No assistant message found\\"}"
-fi`.trim();
-
-    return command;
+fi`;
   }
 
   /**
-   * Create macOS notification command with transcript processing and sound integration
+   * Generate macOS script content
    */
-  private createMacOSCommand(title?: string): string {
+  private generateMacOSScriptContent(title?: string): string {
     // Generate the bash script with proper title handling
     const mainTitleLogic = title ? `MAIN_TITLE="${title.replace(/"/g, '\\"')}"` : 'MAIN_TITLE="Claude Code"';
 
-    const command = `#!/bin/bash
+    return `#!/bin/bash
 # Process transcript and send macOS notification with logging
 TRANSCRIPT=$(jq -r .transcript_path)
 XDG_DATA_HOME="\${XDG_DATA_HOME:-\$HOME/.local/share}"
@@ -379,55 +517,7 @@ if [ -n "\$LATEST_MSG" ]; then
   fi
 else
   log_notification "DEBUG" "macOS notification skipped" "{\\"title\\":\\"${title || 'Claude Code'}\\",\\"reason\\":\\"No assistant message found\\"}"
-fi`.trim();
-
-    return command;
-  }
-
-  /**
-   * Generate ntfy.sh script content based on the provided reference
-   */
-  private generateNtfyScriptContent(topicName: string): string {
-    return `#!/bin/bash
-
-# Default topic name with unique identifier
-DEFAULT_TOPIC_NAME="${topicName}"
-
-# Configuration (use environment variable if set, otherwise use default)
-TOPIC_NAME="\${NTFY_TOPIC:-$DEFAULT_TOPIC_NAME}"
-
-# Get transcript path from stdin
-TRANSCRIPT=$(jq -r .transcript_path)
-
-# Get latest assistant message
-LATEST_MSG=$(tail -1 "$TRANSCRIPT" | jq -r '.message.content[0].text // empty')
-
-# Get latest user message using a temporary file for portability
-USER_MSG=""
-TEMP_FILE=$(mktemp)
-tac "$TRANSCRIPT" > "$TEMP_FILE"
-while IFS= read -r line; do
-  TYPE=$(echo "$line" | jq -r '.type // empty')
-  if [ "$TYPE" = "user" ]; then
-    ROLE=$(echo "$line" | jq -r '.message.role // empty')
-    if [ "$ROLE" = "user" ]; then
-      CONTENT=$(echo "$line" | jq -r '.message.content // empty')
-      # Only use content if it's a string and doesn't start with [
-      if [ -n "$CONTENT" ] && [ "\${CONTENT:0:1}" != "[" ]; then
-        USER_MSG="$CONTENT"
-        break
-      fi
-    fi
-  fi
-done < "$TEMP_FILE"
-rm -f "$TEMP_FILE"
-
-# Send message only if not empty
-if [ -n "$LATEST_MSG" ]; then
-  echo "$LATEST_MSG" | sed 's/^/ /' | head -c 500 | \\
-  curl -H "Title: \${USER_MSG:0:100}" -d @- "ntfy.sh/\${TOPIC_NAME}"
-fi
-`;
+fi`;
   }
 }
 

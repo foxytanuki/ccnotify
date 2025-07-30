@@ -12,8 +12,14 @@ export interface PathResolver {
   getConfigDirectory(isGlobal: boolean): string;
   getScriptPath(isGlobal: boolean, scriptName: string): string;
   getHomeDirectory(): string;
+  getXdgConfigHome(): string;
+  getXdgDataHome(): string;
+  getCcnotifyConfigDir(): string;
+  getCcnotifyDataDir(): string;
   validateDirectoryPath(path: string): Promise<boolean>;
   ensureConfigDirectory(isGlobal: boolean): Promise<string>;
+  ensureCcnotifyConfigDir(): Promise<string>;
+  ensureCcnotifyDataDir(): Promise<string>;
 }
 
 /**
@@ -22,6 +28,42 @@ export interface PathResolver {
 export class PathResolverImpl implements PathResolver {
   private readonly CONFIG_DIR_NAME = '.claude';
   private readonly CONFIG_FILE_NAME = 'settings.json';
+
+  /**
+   * Get XDG config home directory
+   */
+  getXdgConfigHome(): string {
+    const xdgConfigHome = process.env.XDG_CONFIG_HOME;
+    if (xdgConfigHome) {
+      return xdgConfigHome;
+    }
+    return join(homedir(), '.config');
+  }
+
+  /**
+   * Get XDG data home directory
+   */
+  getXdgDataHome(): string {
+    const xdgDataHome = process.env.XDG_DATA_HOME;
+    if (xdgDataHome) {
+      return xdgDataHome;
+    }
+    return join(homedir(), '.local', 'share');
+  }
+
+  /**
+   * Get ccnotify config directory
+   */
+  getCcnotifyConfigDir(): string {
+    return join(this.getXdgConfigHome(), 'ccnotify');
+  }
+
+  /**
+   * Get ccnotify data directory
+   */
+  getCcnotifyDataDir(): string {
+    return join(this.getXdgDataHome(), 'ccnotify');
+  }
 
   /**
    * Get the configuration file path for local or global mode
@@ -42,11 +84,11 @@ export class PathResolverImpl implements PathResolver {
   }
 
   /**
-   * Get the path for a script file in the configuration directory
+   * Get the path for a script file in the ccnotify data directory
    */
   getScriptPath(isGlobal: boolean, scriptName: string): string {
-    const configDir = this.getConfigDirectory(isGlobal);
-    return join(configDir, scriptName);
+    const ccnotifyDataDir = this.getCcnotifyDataDir();
+    return join(ccnotifyDataDir, scriptName);
   }
 
   /**
@@ -147,6 +189,80 @@ export class PathResolverImpl implements PathResolver {
         error as Error,
         ErrorSeverity.HIGH,
         { configDir, isGlobal, operation: 'ensureConfigDirectory' }
+      );
+    }
+  }
+
+  /**
+   * Ensure the ccnotify config directory exists and return its path
+   */
+  async ensureCcnotifyConfigDir(): Promise<string> {
+    const ccnotifyConfigDir = this.getCcnotifyConfigDir();
+
+    try {
+      // Validate the directory path
+      const isValid = await this.validateDirectoryPath(ccnotifyConfigDir);
+      if (!isValid) {
+        throw errorHandler.createError(
+          ErrorType.DIRECTORY_ACCESS_ERROR,
+          `Cannot access or create ccnotify config directory: ${ccnotifyConfigDir}`,
+          undefined,
+          ErrorSeverity.HIGH,
+          { ccnotifyConfigDir, operation: 'ensureCcnotifyConfigDir' }
+        );
+      }
+
+      // Ensure the directory exists
+      await fileSystemService.ensureDirectory(ccnotifyConfigDir);
+
+      return ccnotifyConfigDir;
+    } catch (error) {
+      if (error instanceof CCNotifyError) {
+        throw error;
+      }
+      throw errorHandler.createError(
+        ErrorType.DIRECTORY_ACCESS_ERROR,
+        `Failed to ensure ccnotify config directory: ${ccnotifyConfigDir}`,
+        error as Error,
+        ErrorSeverity.HIGH,
+        { ccnotifyConfigDir, operation: 'ensureCcnotifyConfigDir' }
+      );
+    }
+  }
+
+  /**
+   * Ensure the ccnotify data directory exists and return its path
+   */
+  async ensureCcnotifyDataDir(): Promise<string> {
+    const ccnotifyDataDir = this.getCcnotifyDataDir();
+
+    try {
+      // Validate the directory path
+      const isValid = await this.validateDirectoryPath(ccnotifyDataDir);
+      if (!isValid) {
+        throw errorHandler.createError(
+          ErrorType.DIRECTORY_ACCESS_ERROR,
+          `Cannot access or create ccnotify data directory: ${ccnotifyDataDir}`,
+          undefined,
+          ErrorSeverity.HIGH,
+          { ccnotifyDataDir, operation: 'ensureCcnotifyDataDir' }
+        );
+      }
+
+      // Ensure the directory exists
+      await fileSystemService.ensureDirectory(ccnotifyDataDir);
+
+      return ccnotifyDataDir;
+    } catch (error) {
+      if (error instanceof CCNotifyError) {
+        throw error;
+      }
+      throw errorHandler.createError(
+        ErrorType.DIRECTORY_ACCESS_ERROR,
+        `Failed to ensure ccnotify data directory: ${ccnotifyDataDir}`,
+        error as Error,
+        ErrorSeverity.HIGH,
+        { ccnotifyDataDir, operation: 'ensureCcnotifyDataDir' }
       );
     }
   }

@@ -76,7 +76,7 @@ export async function handleDiscordCommand(args: DiscordCommandArgs): Promise<vo
     await errorHandler.logDebug('Generating Discord hook');
 
     // Generate Discord hook
-    const discordHook = hookGenerator.generateDiscordHook(sanitizedWebhookUrl);
+    const discordHook = await hookGenerator.generateDiscordHook(sanitizedWebhookUrl, args.options.global ?? false);
 
     await errorHandler.logDebug('Merging configuration');
 

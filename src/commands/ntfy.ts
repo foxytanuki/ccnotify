@@ -76,7 +76,7 @@ export async function handleNtfyCommand(args: NtfyCommandArgs): Promise<void> {
     await errorHandler.logDebug('Generating ntfy hook');
 
     // Generate ntfy hook
-    const ntfyHook = hookGenerator.generateNtfyHook(sanitizedTopicName);
+    const ntfyHook = await hookGenerator.generateNtfyHook(sanitizedTopicName, args.options.global ?? false);
 
     await errorHandler.logDebug('Merging configuration');
 

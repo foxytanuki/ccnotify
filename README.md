@@ -198,7 +198,7 @@ ccnotify --version
 
 ### Configuration File Structure
 
-The tool creates Stop Hooks in your Claude configuration file:
+The tool creates Stop Hooks in your Claude configuration file and generates executable shell scripts in the XDG data directory:
 
 ```json
 {
@@ -209,7 +209,7 @@ The tool creates Stop Hooks in your Claude configuration file:
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Discord notification script..."
+            "command": "/home/user/.local/share/ccnotify/discord-notification.sh"
           }
         ]
       }
@@ -217,6 +217,17 @@ The tool creates Stop Hooks in your Claude configuration file:
   }
 }
 ```
+
+#### XDG Base Directory Support
+
+ccnotify follows the XDG Base Directory Specification for configuration and data storage:
+
+- **Executable scripts**: `$XDG_DATA_HOME/ccnotify/` (default: `~/.local/share/ccnotify/`)
+- **Notification logs**: `$XDG_DATA_HOME/ccnotify/` (default: `~/.local/share/ccnotify/`)
+
+You can customize these locations using environment variables:
+- `XDG_CONFIG_HOME`: Custom configuration directory
+- `XDG_DATA_HOME`: Custom data directory
 
 ### ⚠️ Important: Git Security
 
@@ -350,6 +361,14 @@ Logs are automatically saved to `$XDG_DATA_HOME/ccnotify/notifications.log` (def
 - Execution times
 - Error messages
 - Configuration details (with sensitive data masked)
+
+#### Script Management
+
+The generated shell scripts are stored in `$XDG_DATA_HOME/ccnotify/` and are automatically made executable. These scripts handle:
+- Transcript parsing and message extraction
+- Notification formatting and sending
+- Error handling and logging
+- Cross-platform compatibility
 
 ## Development
 

@@ -25,7 +25,7 @@ describe('handleMacOSCommand', () => {
     mockConfigManager.loadConfig = vi.fn().mockResolvedValue({});
     mockConfigManager.mergeConfig = vi.fn().mockReturnValue({});
     mockConfigManager.saveConfig = vi.fn().mockResolvedValue(undefined);
-    mockHookGenerator.generateMacOSHook = vi.fn().mockReturnValue({ matcher: 'macos', hooks: [] });
+    mockHookGenerator.generateMacOSHook = vi.fn().mockResolvedValue({ matcher: 'macos', hooks: [] });
     mockFileSystemService.fileExists = vi.fn().mockResolvedValue(false);
     mockFileSystemService.ensureDirectory = vi.fn().mockResolvedValue(undefined);
 
@@ -45,7 +45,7 @@ describe('handleMacOSCommand', () => {
       await handleMacOSCommand(args);
 
       // Verify the core business logic: hook generation and config saving
-      expect(mockHookGenerator.generateMacOSHook).toHaveBeenCalledWith(undefined);
+      expect(mockHookGenerator.generateMacOSHook).toHaveBeenCalledWith(undefined, false);
       expect(mockConfigManager.saveConfig).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith('✅ macOS Stop Hook created successfully!');
       expect(console.log).toHaveBeenCalledWith('🏷️  Title: User message (dynamic)');
@@ -59,7 +59,7 @@ describe('handleMacOSCommand', () => {
 
       await handleMacOSCommand(args);
 
-      expect(mockHookGenerator.generateMacOSHook).toHaveBeenCalledWith('Custom Title');
+      expect(mockHookGenerator.generateMacOSHook).toHaveBeenCalledWith('Custom Title', true);
       expect(mockConfigManager.saveConfig).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith('✅ macOS Stop Hook created successfully!');
       expect(console.log).toHaveBeenCalledWith('🏷️  Custom title: Custom Title');
@@ -75,7 +75,7 @@ describe('handleMacOSCommand', () => {
 
       await handleMacOSCommand(args);
 
-      expect(mockHookGenerator.generateMacOSHook).toHaveBeenCalledWith('');
+      expect(mockHookGenerator.generateMacOSHook).toHaveBeenCalledWith('', false);
       expect(console.log).toHaveBeenCalledWith('🏷️  Custom title: ');
     });
 
@@ -87,7 +87,10 @@ describe('handleMacOSCommand', () => {
 
       await handleMacOSCommand(args);
 
-      expect(mockHookGenerator.generateMacOSHook).toHaveBeenCalledWith('Title with "quotes" and \'apostrophes\'');
+      expect(mockHookGenerator.generateMacOSHook).toHaveBeenCalledWith(
+        'Title with "quotes" and \'apostrophes\'',
+        false
+      );
       expect(console.log).toHaveBeenCalledWith('🏷️  Custom title: Title with "quotes" and \'apostrophes\'');
     });
   });

@@ -70,7 +70,7 @@ export async function handleMacOSCommand(args: MacOSCommandArgs): Promise<void> 
     await errorHandler.logDebug('Generating macOS hook');
 
     // Generate macOS hook
-    const macosHook = hookGenerator.generateMacOSHook(args.title);
+    const macosHook = await hookGenerator.generateMacOSHook(args.title, args.options.global ?? false);
 
     await errorHandler.logDebug('Merging configuration');
 

@@ -68,11 +68,18 @@ describe('Discord command integration tests', () => {
         expect(config.hooks.Stop[0].hooks[0]).toHaveProperty('type', 'command');
         expect(config.hooks.Stop[0].hooks[0]).toHaveProperty('command');
 
-        // Verify the command contains expected elements
+        // Verify the command is a script file path
         const command = config.hooks.Stop[0].hooks[0].command;
-        expect(command).toContain('curl');
-        expect(command).toContain('https://discord.com/api/webhooks/123456789/test-token');
-        expect(command).toContain('#!/bin/bash');
+        expect(command).toMatch(/.*\/ccnotify\/discord-notification\.sh$/);
+
+        // Verify the script file exists and contains expected content
+        const scriptExists = await fileSystemService.fileExists(command);
+        expect(scriptExists).toBe(true);
+
+        const scriptContent = await fileSystemService.readFile(command);
+        expect(scriptContent).toContain('curl');
+        expect(scriptContent).toContain('https://discord.com/api/webhooks/123456789/test-token');
+        expect(scriptContent).toContain('#!/bin/bash');
       } finally {
         // Restore original function
         configManager.getConfigPath = originalGetConfigPath;

@@ -96,14 +96,14 @@ describe('PathResolverImpl', () => {
   });
 
   describe('getScriptPath', () => {
-    it('should return local script path when isGlobal is false', () => {
+    it('should return script path in ccnotify data directory regardless of global flag', () => {
       const result = resolver.getScriptPath(false, 'ntfy.sh');
-      expect(result).toBe(join(mockCwd, '.claude', 'ntfy.sh'));
+      expect(result).toBe(join(mockHomedir, '.local', 'share', 'ccnotify', 'ntfy.sh'));
     });
 
-    it('should return global script path when isGlobal is true', () => {
+    it('should return script path in ccnotify data directory regardless of global flag', () => {
       const result = resolver.getScriptPath(true, 'ntfy.sh');
-      expect(result).toBe(join(mockHomedir, '.claude', 'ntfy.sh'));
+      expect(result).toBe(join(mockHomedir, '.local', 'share', 'ccnotify', 'ntfy.sh'));
     });
   });
 
@@ -264,7 +264,7 @@ describe('pathUtils', () => {
       vi.mocked(mockUnlink).mockResolvedValue();
 
       const result = await pathUtils.getValidatedScriptPath(true, 'ntfy.sh');
-      expect(result).toBe(join('/home/testuser', '.claude', 'ntfy.sh'));
+      expect(result).toBe(join('/home/testuser', '.local', 'share', 'ccnotify', 'ntfy.sh'));
     });
   });
 

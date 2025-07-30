@@ -162,7 +162,8 @@ describe('handleDiscordCommand unit tests (improved)', () => {
       await handleDiscordCommand(args);
 
       expect(mockHookGenerator.generateDiscordHook).toHaveBeenCalledWith(
-        'https://discord.com/api/webhooks/123/valid-token'
+        'https://discord.com/api/webhooks/123/valid-token',
+        false
       );
     });
   });
@@ -173,7 +174,7 @@ describe('handleDiscordCommand unit tests (improved)', () => {
       const newHook = { matcher: 'discord-notification', hooks: [] };
 
       (mockConfigManager.loadConfig as ReturnType<typeof vi.fn>).mockResolvedValue(existingConfig);
-      (mockHookGenerator.generateDiscordHook as ReturnType<typeof vi.fn>).mockReturnValue(newHook);
+      (mockHookGenerator.generateDiscordHook as ReturnType<typeof vi.fn>).mockResolvedValue(newHook);
 
       const args: DiscordCommandArgs = {
         webhookUrl: 'https://discord.com/api/webhooks/123/test-token',

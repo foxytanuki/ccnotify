@@ -27,7 +27,7 @@ describe('handleNtfyCommand', () => {
     mockConfigManager.loadConfig = vi.fn().mockResolvedValue({});
     mockConfigManager.mergeConfig = vi.fn().mockReturnValue({});
     mockConfigManager.saveConfig = vi.fn().mockResolvedValue(undefined);
-    mockHookGenerator.generateNtfyHook = vi.fn().mockReturnValue({ matcher: 'ntfy', hooks: [] });
+    mockHookGenerator.generateNtfyHook = vi.fn().mockResolvedValue({ matcher: 'ntfy', hooks: [] });
     mockFileSystemService.fileExists = vi.fn().mockResolvedValue(false);
     mockFileSystemService.ensureDirectory = vi.fn().mockResolvedValue(undefined);
     (validationModule.validateAndSanitizeNtfyTopic as any) = vi.fn().mockImplementation((topic: string) => topic);
@@ -49,7 +49,7 @@ describe('handleNtfyCommand', () => {
       await handleNtfyCommand(args);
 
       // Verify the core business logic: hook generation and config saving
-      expect(mockHookGenerator.generateNtfyHook).toHaveBeenCalledWith('test-topic');
+      expect(mockHookGenerator.generateNtfyHook).toHaveBeenCalledWith('test-topic', false);
       expect(mockConfigManager.saveConfig).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith('✅ ntfy Stop Hook created successfully!');
     });
@@ -62,7 +62,7 @@ describe('handleNtfyCommand', () => {
 
       await handleNtfyCommand(args);
 
-      expect(mockHookGenerator.generateNtfyHook).toHaveBeenCalledWith('test-topic');
+      expect(mockHookGenerator.generateNtfyHook).toHaveBeenCalledWith('test-topic', true);
       expect(mockConfigManager.saveConfig).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith('✅ ntfy Stop Hook created successfully!');
     });
