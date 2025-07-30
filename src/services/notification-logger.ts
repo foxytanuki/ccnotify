@@ -1,4 +1,4 @@
-import { promises as fs } from 'node:fs';
+import { promises as fs, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -105,6 +105,9 @@ export class NotificationLogger {
       includeResponses: config.includeResponses ?? false,
       ...config,
     };
+
+    // Load existing logs from file
+    this.loadLogsFromFile();
   }
 
   /**
@@ -424,6 +427,52 @@ export class NotificationLogger {
    */
   private maskWebhookUrl(url: string): string {
     return url.replace(/\/[\w-]+$/, '/***');
+  }
+
+  /**
+   * Load existing logs from file
+   */
+  private loadLogsFromFile(): void {
+    if (!this.config.logFilePath) return;
+
+    try {
+      const logContent = readFileSync(this.config.logFilePath, 'utf8');
+      const lines = logContent.split('\n').filter(line => line.trim());
+
+      for (const line of lines) {
+        try {
+          const entry = JSON.parse(line) as NotificationLogEntry;
+
+          // Handle logs from older versions that don't have result field
+          if (!entry.result) {
+            // Infer result from message
+            if (entry.message.includes('sent successfully')) {
+              entry.result = NotificationResult.SUCCESS;
+            } else if (entry.message.includes('failed')) {
+              entry.result = NotificationResult.FAILED;
+            } else if (entry.message.includes('timed out')) {
+              entry.result = NotificationResult.TIMEOUT;
+            } else if (entry.message.includes('skipped')) {
+              entry.result = NotificationResult.SKIPPED;
+            } else {
+              // Default to success for "Starting" messages
+              entry.result = NotificationResult.SUCCESS;
+            }
+          }
+
+          this.logBuffer.push(entry);
+        } catch (parseError) {
+          // Skip invalid JSON lines
+        }
+      }
+
+      // Trim buffer to max entries
+      if (this.logBuffer.length > this.config.maxLogEntries) {
+        this.logBuffer = this.logBuffer.slice(-this.config.maxLogEntries);
+      }
+    } catch (error) {
+      // File might not exist yet, which is fine
+    }
   }
 }
 
