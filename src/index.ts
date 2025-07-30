@@ -4,7 +4,13 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
-import { registerDiscordCommand, registerMacOSCommand, registerNtfyCommand } from './commands/index.js';
+import {
+  registerConfigCommand,
+  registerDiscordCommand,
+  registerLogsCommand,
+  registerMacOSCommand,
+  registerNtfyCommand,
+} from './commands/index.js';
 import { errorHandler } from './services/error-handler.js';
 import { ErrorSeverity, ErrorType } from './types/index.js';
 
@@ -44,6 +50,9 @@ Examples:
   $ ccnotify discord https://discord.com/api/webhooks/123/abc --global
   $ ccnotify ntfy my-topic --global
   $ ccnotify macos --global
+  $ ccnotify logs --stats
+  $ ccnotify logs --failed
+  $ ccnotify logs --type discord
 
 For more information, visit: https://github.com/foxytanuki/ccnotify
 `
@@ -64,6 +73,12 @@ function registerCommands(program: Command): void {
 
   // Register macOS command
   registerMacOSCommand(program);
+
+  // Register logs command
+  registerLogsCommand(program);
+
+  // Register config command
+  registerConfigCommand(program);
 }
 
 /**

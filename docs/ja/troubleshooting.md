@@ -8,6 +8,7 @@
 - [macOS通知の問題](#macos通知の問題)
 - [設定ファイルの問題](#設定ファイルの問題)
 - [権限エラー](#権限エラー)
+- [通知ログの確認](#通知ログの確認)
 - [その他の一般的な問題](#その他の一般的な問題)
 
 ## インストール関連
@@ -255,6 +256,130 @@ chmod 644 .claude/settings.json
 ```bash
 # 必要に応じて所有者を変更
 sudo chown $USER:$USER .claude/settings.json
+```
+
+## 通知ログの確認
+
+### 通知が届かない場合の原因究明
+
+通知が届かない問題を調査するために、ccnotifyには詳細なログ機能が組み込まれています。
+
+#### ログの確認方法
+
+1. **最近のログを確認**
+```bash
+ccnotify logs
+```
+
+2. **失敗した通知のみを確認**
+```bash
+ccnotify logs --failed
+```
+
+3. **特定の通知タイプのログを確認**
+```bash
+# Discord通知のログ
+ccnotify logs --type discord
+
+# ntfy通知のログ
+ccnotify logs --type ntfy
+
+# macOS通知のログ
+ccnotify logs --type macos
+```
+
+4. **通知統計を確認**
+```bash
+ccnotify logs --stats
+```
+
+5. **ログをファイルにエクスポート**
+```bash
+ccnotify logs --export notification-logs.json
+```
+
+#### ログに記録される情報
+
+- **通知の実行時刻**
+- **通知タイプ** (discord, ntfy, macos)
+- **実行結果** (success, failed, timeout, skipped)
+- **HTTPレスポンスコード** (Discord, ntfy)
+- **実行時間**
+- **エラーメッセージ** (失敗時)
+- **Webhook URL** (マスク済み)
+- **トピック名** (ntfy)
+- **通知タイトル** (macOS)
+
+#### ログファイルの場所
+
+ログは以下の場所に保存されます：
+```
+$XDG_DATA_HOME/ccnotify/notifications.log
+```
+
+デフォルトでは：
+```
+~/.local/share/ccnotify/notifications.log
+```
+
+XDG Base Directory Specificationに従って、`$XDG_DATA_HOME`環境変数で場所を変更できます。
+
+#### ログレベルの設定
+
+環境変数でログレベルを設定できます：
+```bash
+# デバッグ情報を含む詳細ログ
+export CCNOTIFY_LOG_LEVEL=DEBUG
+
+# エラーのみ
+export CCNOTIFY_LOG_LEVEL=ERROR
+```
+
+#### よくあるログパターン
+
+**Discord通知の失敗例**:
+```json
+{
+  "timestamp": "2024-01-01T12:00:00.000Z",
+  "level": "ERROR",
+  "type": "discord",
+  "result": "failed",
+  "message": "discord notification failed: HTTP 404",
+  "details": {
+    "webhookUrl": "https://discord.com/api/webhooks/123/***",
+    "responseCode": 404,
+    "error": "HTTP 404"
+  }
+}
+```
+
+**ntfy通知の成功例**:
+```json
+{
+  "timestamp": "2024-01-01T12:00:00.000Z",
+  "level": "INFO",
+  "type": "ntfy",
+  "result": "success",
+  "message": "ntfy notification sent successfully",
+  "details": {
+    "topicName": "my-topic",
+    "responseCode": 200,
+    "executionTime": 1
+  }
+}
+```
+
+#### ログ設定の管理
+
+```bash
+# 現在の設定を確認
+ccnotify config --show
+
+# ログレベルをDEBUGに設定
+ccnotify config --log-level DEBUG
+
+# トランスクリプト内容をログに含める
+ccnotify config --include-transcripts
 ```
 
 ## その他の一般的な問題

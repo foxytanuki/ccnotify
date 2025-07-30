@@ -404,7 +404,8 @@ export class ErrorHandler {
    * Get default log file path
    */
   private getDefaultLogPath(): string {
-    return join(homedir(), '.ccnotify', 'error.log');
+    const xdgDataHome = process.env.XDG_DATA_HOME || join(homedir(), '.local', 'share');
+    return join(xdgDataHome, 'ccnotify', 'error.log');
   }
 
   /**

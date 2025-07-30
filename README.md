@@ -128,6 +128,44 @@ ccnotify macos
 ccnotify macos "Claude Code Completed"
 ```
 
+#### Notification Logging
+
+View and manage notification logs:
+
+```bash
+# View recent logs
+ccnotify logs
+
+# Show only failed notifications
+ccnotify logs --failed
+
+# View statistics
+ccnotify logs --stats
+
+# Export logs to file
+ccnotify logs --export logs.json
+
+# Filter by notification type
+ccnotify logs --type discord
+ccnotify logs --type ntfy
+ccnotify logs --type macos
+```
+
+#### Configuration Management
+
+Manage notification logging settings:
+
+```bash
+# Show current configuration
+ccnotify config --show
+
+# Enable debug logging
+ccnotify config --log-level DEBUG
+
+# Include transcript content in logs
+ccnotify config --include-transcripts
+```
+
 ### Global Configuration
 
 Use the `--global` or `-g` flag to create hooks in your global Claude configuration (`~/.claude/settings.json`):
@@ -281,6 +319,37 @@ The tool provides clear error messages for common issues:
 The tool automatically creates backups of existing configuration files before making changes. Backups are stored with timestamps:
 - `.claude/settings.local.json.backup.YYYY-MM-DDTHH-MM-SS-sssZ` (for local configurations)
 - `~/.claude/settings.json.backup.YYYY-MM-DDTHH-MM-SS-sssZ` (for global configurations)
+
+### Notification Logging
+
+When notifications don't work as expected, use the built-in logging system to diagnose issues:
+
+```bash
+# View recent notification logs
+ccnotify logs
+
+# Show only failed notifications
+ccnotify logs --failed
+
+# View statistics
+ccnotify logs --stats
+
+# Export logs for analysis
+ccnotify logs --export logs.json
+
+# Filter by notification type
+ccnotify logs --type discord
+ccnotify logs --type ntfy
+ccnotify logs --type macos
+```
+
+Logs are automatically saved to `$XDG_DATA_HOME/ccnotify/notifications.log` (default: `~/.local/share/ccnotify/notifications.log`) and include:
+- Execution timestamps
+- Success/failure status
+- HTTP response codes
+- Execution times
+- Error messages
+- Configuration details (with sensitive data masked)
 
 ## Development
 
